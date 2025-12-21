@@ -1,24 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { Stack } from "expo-router";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Auth */}
+      <Stack.Screen name="(auth)/login" />
+      <Stack.Screen name="(auth)/register" />
+
+      {/* Main App */}
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="add-meal" />
+      <Stack.Screen name="meal/[id]" />
+      <Stack.Screen name="add-metric" />
+      <Stack.Screen name="add-workout" />
+      <Stack.Screen name="workout/[id]" />
+      <Stack.Screen name="edit-workout/[id]" />
+      <Stack.Screen name="exercise-presets" />
+
+    </Stack>
   );
 }
