@@ -17,7 +17,6 @@ export default function RootLayout() {
       <Stack.Screen name="workout/[id]" />
       <Stack.Screen name="edit-workout/[id]" />
       <Stack.Screen name="exercise-presets" />
-
     </Stack>
   );
 }
