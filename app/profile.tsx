@@ -1,287 +1,259 @@
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  Pressable,
-} from "react-native";
-import { useState, useMemo } from "react";
-import { useRouter } from "expo-router";
+import { View, Text, ScrollView, Pressable } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../src/firebase/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { calculateTargets } from "../src/utils/calculateTargets";
-import { Card } from "../src/components/Card";
-import { SegmentedControl } from "../src/components/SegmentedControl";
+import { doc, getDoc } from "firebase/firestore";
 
-/* ------------------ TYPES ------------------ */
-type Gender = "male" | "female";
-type Goal = "cut" | "maintain" | "bulk";
-type Activity =
-  | "sedentary"
-  | "light"
-  | "moderate"
-  | "high"
-  | "athlete";
+/* ---- COMPONENTS ---- */
+import EditProfileModal from "../src/components/EditProfileModal";
+import StatCard from "../src/components/profile/StatCard";
+import ProgressOverview from "../src/components/profile/ProgressOverview";
+import TrainingPreferences from "../src/components/profile/TrainingPreferences";
+import GoalsMilestones from "../src/components/profile/GoalsMilestones";
+import SettingsSection from "../src/components/profile/SettingsSection";
+import UnitToggleModal from "../src/components/profile/UnitToggleModal";
+import EditTrainingPreferencesModal from "../src/components/profile/EditTrainingPreferencesModal";
 
-/* ------------------ COMPONENT ------------------ */
+/* ---- UTILS ---- */
+import {
+  formatHeight,
+  formatWeight,
+  UnitSystem,
+} from "../src/utils/unit";
+
 export default function Profile() {
-  const router = useRouter();
-
-  /* -------- AUTH GUARD (CRITICAL FIX) -------- */
   const user = auth.currentUser;
 
-  if (!user) {
+  const [profile, setProfile] = useState<any>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [unitModalOpen, setUnitModalOpen] = useState(false);
+  const [editTrainingOpen, setEditTrainingOpen] = useState(false);
+
+  if (!user) return null;
+
+  /* ---------- FETCH PROFILE ---------- */
+  useEffect(() => {
+    (async () => {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists()) {
+        setProfile(snap.data());
+      }
+    })();
+  }, [editOpen, unitModalOpen, editTrainingOpen]);
+
+  if (!profile) {
     return (
-      <View style={{ padding: 16 }}>
-        <Text style={{ fontSize: 16 }}>Loading user…</Text>
-      </View>
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <Text>Loading profile…</Text>
+      </SafeAreaView>
     );
   }
 
-  const uid = user.uid;
+  /* ---------- UNIT SYSTEM ---------- */
+  const unit: UnitSystem =
+    profile.preferences?.units ?? "imperial";
 
-  /* ------------------ STATE ------------------ */
-  const [gender, setGender] = useState<Gender | null>(null);
-  const [goal, setGoal] = useState<Goal | null>(null);
-  const [activity, setActivity] = useState<Activity | null>(null);
+  /* ---------- DERIVED VALUES ---------- */
+  const heightDisplay = formatHeight(profile.height, unit);
+  const weightDisplay = formatWeight(profile.weight, unit);
 
-  const [age, setAge] = useState("");
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
-  const [bodyFat, setBodyFat] = useState("");
-
-  /* ------------------ PARSED VALUES ------------------ */
-  const numericAge = Number(age);
-  const numericHeight = Number(height);
-  const numericWeight = Number(weight);
-  const numericBodyFat =
-    bodyFat.trim() === "" ? undefined : Number(bodyFat);
-
-  /* ------------------ VALIDATION ------------------ */
-  const isValid =
-    gender !== null &&
-    goal !== null &&
-    activity !== null &&
-    numericAge >= 13 &&
-    numericHeight >= 120 &&
-    numericWeight >= 30;
-
-  /* ------------------ LIVE TARGET PREVIEW ------------------ */
-  const previewTargets = useMemo(() => {
-    if (!isValid) return null;
-
-    return calculateTargets({
-      gender,
-      age: numericAge,
-      height: numericHeight,
-      weight: numericWeight,
-      bodyFat: numericBodyFat,
-      goal,
-      activityLevel: activity,
-    });
-  }, [
-    isValid,
-    gender,
-    goal,
-    activity,
-    numericAge,
-    numericHeight,
-    numericWeight,
-    numericBodyFat,
-  ]);
-
-  /* ------------------ SAVE (FIXED) ------------------ */
-  const saveProfile = async () => {
-    console.log("SAVE ATTEMPT", {
-      uid,
-      gender,
-      goal,
-      activity,
-      numericAge,
-      numericHeight,
-      numericWeight,
-      isValid,
-    });
-
-    if (!isValid || !previewTargets) {
-      console.log("Profile invalid, save blocked");
-      return;
-    }
-
-    try {
-      await setDoc(doc(db, "users", uid), {
-        gender,
-        age: numericAge,
-        height: numericHeight,
-        weight: numericWeight,
-        bodyFat: numericBodyFat ?? null,
-        goal,
-        activityLevel: activity,
-        targets: previewTargets,
-        updatedAt: serverTimestamp(),
-      });
-
-      console.log("Profile saved successfully");
-      router.back();
-    } catch (error) {
-      console.error("Failed to save profile:", error);
-    }
-  };
-
-  /* ------------------ UI ------------------ */
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 140 }}
-      >
-        {/* -------- PERSONAL DETAILS -------- */}
-        <Card>
-          <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 12 }}>
-            Personal Details
-          </Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
-          <Text>Gender *</Text>
-          <SegmentedControl
-            options={[
-              { label: "Male", value: "male" },
-              { label: "Female", value: "female" },
-            ]}
-            value={gender}
-            onChange={setGender}
-          />
-
-          <Text style={{ marginTop: 12 }}>Age *</Text>
-          <TextInput
-            keyboardType="numeric"
-            placeholder="Years"
-            value={age}
-            onChangeText={setAge}
-          />
-
-          <Text style={{ marginTop: 12 }}>Height (cm) *</Text>
-          <TextInput
-            keyboardType="numeric"
-            placeholder="cm"
-            value={height}
-            onChangeText={setHeight}
-          />
-
-          <Text style={{ marginTop: 12 }}>Weight (kg) *</Text>
-          <TextInput
-            keyboardType="numeric"
-            placeholder="kg"
-            value={weight}
-            onChangeText={setWeight}
-          />
-
-          <Text style={{ marginTop: 12 }}>
-            Body Fat % (optional)
-          </Text>
-          <TextInput
-            keyboardType="numeric"
-            placeholder="%"
-            value={bodyFat}
-            onChangeText={setBodyFat}
-          />
-        </Card>
-
-        {/* -------- GOAL -------- */}
-        <Card>
-          <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 12 }}>
-            Fitness Goal *
-          </Text>
-
-          <SegmentedControl
-            options={[
-              { label: "Cut", value: "cut" },
-              { label: "Maintain", value: "maintain" },
-              { label: "Bulk", value: "bulk" },
-            ]}
-            value={goal}
-            onChange={setGoal}
-          />
-        </Card>
-
-        {/* -------- ACTIVITY -------- */}
-        <Card>
-          <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 12 }}>
-            Activity Level *
-          </Text>
-
-          {[
-            { label: "Sedentary", desc: "Little or no exercise", value: "sedentary" },
-            { label: "Light", desc: "1–3 workouts/week", value: "light" },
-            { label: "Moderate", desc: "3–5 workouts/week", value: "moderate" },
-            { label: "High", desc: "6–7 workouts/week", value: "high" },
-            { label: "Athlete", desc: "Intense or twice daily", value: "athlete" },
-          ].map((item) => (
-            <Pressable
-              key={item.value}
-              onPress={() => setActivity(item.value as Activity)}
-              style={{
-                padding: 12,
-                borderRadius: 10,
-                marginBottom: 8,
-                backgroundColor:
-                  activity === item.value ? "#DBEAFE" : "#F3F4F6",
-              }}
-            >
-              <Text style={{ fontWeight: "600" }}>{item.label}</Text>
-              <Text style={{ color: "#555" }}>{item.desc}</Text>
-            </Pressable>
-          ))}
-        </Card>
-
-        {/* -------- TARGET PREVIEW -------- */}
-        {previewTargets && (
-          <Card>
-            <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 12 }}>
-              Daily Targets
-            </Text>
-
-            <Text>Calories: {previewTargets.calories} kcal</Text>
-            <Text>Protein: {previewTargets.protein} g</Text>
-            <Text>Carbs: {previewTargets.carbs} g</Text>
-            <Text>Fats: {previewTargets.fats} g</Text>
-          </Card>
-        )}
-
-        {/* -------- VALIDATION FEEDBACK -------- */}
-        {!isValid && (
-          <Text style={{ color: "#DC2626", marginTop: 8 }}>
-            Please complete all required fields (*)
-          </Text>
-        )}
-      </ScrollView>
-
-      {/* -------- SAVE BUTTON -------- */}
-      <View
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: 16,
-          backgroundColor: "#fff",
-          borderTopWidth: 1,
-          borderColor: "#E5E7EB",
-        }}
-      >
-        <Pressable
-          onPress={saveProfile}
-          disabled={!isValid}
+        {/* ================= CORE PROFILE ================= */}
+        <View
           style={{
-            backgroundColor: isValid ? "#2563EB" : "#9CA3AF",
+            backgroundColor: "#fff",
+            borderRadius: 16,
             padding: 16,
-            borderRadius: 12,
-            alignItems: "center",
+            marginBottom: 16,
           }}
         >
-          <Text style={{ color: "#fff", fontWeight: "600" }}>
-            Save & Update Targets
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Core Profile
+            </Text>
+
+            <Pressable onPress={() => setEditOpen(true)}>
+              <Ionicons name="pencil" size={18} color="#2563EB" />
+            </Pressable>
+          </View>
+
+          <View style={{ flexDirection: "row", marginTop: 12 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: "#7C3AED",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 12,
+              }}
+            >
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
+                {profile.name?.[0] ?? "U"}
+              </Text>
+            </View>
+
+            <View>
+              <Text style={{ fontSize: 16, fontWeight: "600" }}>
+                {profile.name}
+              </Text>
+              <Text style={{ color: "#6B7280" }}>
+                {profile.age} years • {profile.gender}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              marginTop: 16,
+            }}
+          >
+            <View style={{ width: "48%", marginBottom: 12 }}>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+                Height
+              </Text>
+              <Text style={{ fontWeight: "600" }}>
+                {heightDisplay}
+              </Text>
+            </View>
+
+            <View style={{ width: "48%", marginBottom: 12 }}>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+                Current Weight
+              </Text>
+              <Text style={{ fontWeight: "600" }}>
+                {weightDisplay}
+              </Text>
+            </View>
+
+            <View style={{ width: "48%" }}>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+                Fitness Level
+              </Text>
+              <Text style={{ fontWeight: "600" }}>
+                Intermediate
+              </Text>
+            </View>
+
+            <View style={{ width: "48%" }}>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+                Primary Goal
+              </Text>
+              <Text style={{ fontWeight: "600", color: "#2563EB" }}>
+                Fat Loss
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ================= FITNESS SNAPSHOT ================= */}
+        <View
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
+            Fitness Snapshot
           </Text>
-        </Pressable>
-      </View>
-    </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+            }}
+          >
+        
+            <StatCard
+              icon="body-outline"
+              label="Body Fat"
+              value={`${profile.bodyFat ?? "—"}%`}
+              subtitle="Estimated"
+              bg="#FDF2F8"
+              color="#DB2777"
+            />
+
+            <StatCard
+              icon="barbell-outline"
+              label="Lean Mass"
+              value="132.8 lbs"
+              bg="#ECFDF5"
+              color="#059669"
+            />
+
+            <StatCard
+              icon="nutrition-outline"
+              label="Daily Calories"
+              value={`${profile.targets.calories}`}
+              subtitle="target"
+              bg="#FEF2F2"
+              color="#DC2626"
+            />
+
+            <StatCard
+              icon="fitness-outline"
+              label="Protein"
+              value={`${profile.targets.protein} g`}
+              subtitle="daily"
+              bg="#EEF2FF"
+              color="#4F46E5"
+            />
+          </View>
+        </View>
+
+        {/* ================= PROGRESS OVERVIEW ================= */}
+        <ProgressOverview />
+
+        {/* ================= TRAINING PREFERENCES ================= */}
+        <TrainingPreferences
+          onEdit={() => setEditTrainingOpen(true)}
+        />
+
+        {/* ================= GOALS & MILESTONES ================= */}
+        <GoalsMilestones />
+
+        {/* ================= SETTINGS ================= */}
+        <SettingsSection
+          unit={unit}
+          onUnitsPress={() => setUnitModalOpen(true)}
+        />
+      </ScrollView>
+
+      {/* ================= MODALS ================= */}
+      <EditProfileModal
+        visible={editOpen}
+        onClose={() => setEditOpen(false)}
+      />
+
+      <UnitToggleModal
+        visible={unitModalOpen}
+        current={unit}
+        onClose={() => setUnitModalOpen(false)}
+      />
+
+      <EditTrainingPreferencesModal
+        visible={editTrainingOpen}
+        onClose={() => setEditTrainingOpen(false)}
+      />
+    </SafeAreaView>
   );
 }

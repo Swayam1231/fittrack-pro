@@ -140,7 +140,7 @@ export default function Home() {
             FitTrack
           </Text>
 
-          <Pressable onPress={() => router.push("/profile")}>
+          <Pressable onPress={() => router.push("../profile")}>
             <View
               style={{
                 width: 36,
