@@ -1,23 +1,31 @@
 type ProfileInput = {
   gender: "male" | "female";
   age: number;
-  height: number;
-  weight: number;
+  height: number; // cm
+  weight: number; // kg
   bodyFat?: number;
   goal: "cut" | "maintain" | "bulk";
   activityLevel: "sedentary" | "light" | "moderate" | "high" | "athlete";
 };
 
 export function calculateTargets(data: ProfileInput) {
-  const { gender, age, height, weight, bodyFat, goal, activityLevel } = data;
+  const {
+    gender,
+    age,
+    height,
+    weight,
+    bodyFat,
+    goal,
+    activityLevel,
+  } = data;
 
-  // BMR
+  /* ================= BMR ================= */
   const bmr =
     gender === "male"
       ? 10 * weight + 6.25 * height - 5 * age + 5
       : 10 * weight + 6.25 * height - 5 * age - 161;
 
-  // Activity
+  /* ================= ACTIVITY ================= */
   const activityMap = {
     sedentary: 1.2,
     light: 1.375,
@@ -28,23 +36,57 @@ export function calculateTargets(data: ProfileInput) {
 
   const tdee = bmr * activityMap[activityLevel];
 
-  // Goal
-  const goalFactor = goal === "cut" ? 0.8 : goal === "bulk" ? 1.1 : 1.0;
+  /* ================= CALORIES ================= */
+  const goalFactor =
+    goal === "cut"
+      ? 0.8
+      : goal === "bulk"
+      ? 1.1
+      : 1.0;
+
   const calories = Math.round(tdee * goalFactor);
 
-  // Lean mass
-  const lbm = bodyFat ? weight * (1 - bodyFat / 100) : weight * 0.8;
+  /* ================= LEAN MASS ================= */
+  const leanMass =
+    bodyFat !== undefined
+      ? weight * (1 - bodyFat / 100)
+      : goal === "cut"
+      ? weight * 0.75
+      : weight * 0.8;
 
-  // Protein
-  const protein = Math.round(lbm * 2.2);
+  /* ================= PROTEIN ================= */
+  const proteinMultiplier =
+    goal === "cut"
+      ? 2.4
+      : goal === "bulk"
+      ? 2.3
+      : 2.0;
 
-  // Fat
-  const fatCalories = calories * 0.25;
-  const fats = Math.round(fatCalories / 9);
+  const protein = Math.round(leanMass * proteinMultiplier);
 
-  // Carbs
-  const remainingCalories = calories - (protein * 4 + fatCalories);
+  const proteinCalories = protein * 4;
+
+  /* ================= FAT (REBALANCED) ================= */
+  // Minimum fat: 0.8 g/kg bodyweight
+  const minFatGrams = Math.round(weight * 0.8);
+  const fatCalories = minFatGrams * 9;
+
+  /* ================= CARBS ================= */
+  let remainingCalories =
+    calories - (proteinCalories + fatCalories);
+
+  // Safety check: if calories too low, reduce fat slightly (never protein)
+  if (remainingCalories < calories * 0.2) {
+    remainingCalories = calories * 0.2;
+  }
+
   const carbs = Math.round(remainingCalories / 4);
 
-  return { calories, protein, carbs, fats };
+  /* ================= RETURN ================= */
+  return {
+    calories,
+    protein,
+    carbs,
+    fats: minFatGrams,
+  };
 }

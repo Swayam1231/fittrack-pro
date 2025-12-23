@@ -8,14 +8,15 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { auth, db } from "../../src/firebase/firebase";
+
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   query,
   where,
   Timestamp,
+  onSnapshot, // ✅ added
 } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
 
@@ -49,18 +50,30 @@ export default function Home() {
 
   const today = startOfToday();
 
-  /* ------------------ LOAD DATA ------------------ */
+  /* ================= REAL-TIME TARGETS (FIX) ================= */
+
+  useEffect(() => {
+    if (!user) return;
+
+    const unsub = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        if (snap.exists()) {
+          setTargets(snap.data().targets);
+        }
+      }
+    );
+
+    return () => unsub();
+  }, [user]);
+
+  /* ================= DAILY DATA ================= */
 
   useEffect(() => {
     if (!user) return;
 
     const load = async () => {
       setLoading(true);
-
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        setTargets(userDoc.data().targets);
-      }
 
       const mealsSnap = await getDocs(
         query(
@@ -84,7 +97,7 @@ export default function Home() {
     load();
   }, [user]);
 
-  /* ------------------ CALCULATIONS ------------------ */
+  /* ================= CALCULATIONS ================= */
 
   const consumedCalories = useMemo(
     () => meals.reduce((s, m) => s + (m.calories || 0), 0),
@@ -96,7 +109,6 @@ export default function Home() {
     [meals]
   );
 
-  // ✅ NEW: calories burned today from workouts
   const burnedCalories = useMemo(
     () =>
       workouts.reduce(
@@ -119,7 +131,17 @@ export default function Home() {
       ? Math.min((consumedCalories / targetCalories) * 100, 100)
       : 0;
 
-  /* ------------------ UI ------------------ */
+  /* ================= UI (UNCHANGED) ================= */
+
+  if (loading || !targets) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <Text>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -222,7 +244,7 @@ export default function Home() {
           />
         </View>
 
-        {/* ---------- MACROS ---------- */}
+        {/* ---------- MACRO GOALS ---------- */}
         <Card>
           <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>
             Macro Goals
@@ -243,7 +265,7 @@ export default function Home() {
           />
         </Card>
 
-        {/* ---------- TIP ---------- */}
+        {/* ---------- DAILY TIP ---------- */}
         <Card style={{ backgroundColor: "#EFF6FF" }}>
           <Text style={{ fontWeight: "600", marginBottom: 4 }}>
             💡 Daily Tip
@@ -284,11 +306,9 @@ function StatCard({
       >
         {value}
       </Text>
-      {sub ? (
-        <Text style={{ fontSize: 12, color: "#6B7280" }}>{sub}</Text>
-      ) : (
-        <Text style={{ fontSize: 12, color: "#6B7280" }}>{unit}</Text>
-      )}
+      <Text style={{ fontSize: 12, color: "#6B7280" }}>
+        {sub ?? unit}
+      </Text>
     </Card>
   );
 }
