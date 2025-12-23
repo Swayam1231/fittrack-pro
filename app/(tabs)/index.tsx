@@ -12,11 +12,10 @@ import { auth, db } from "../../src/firebase/firebase";
 import {
   collection,
   doc,
-  getDocs,
   query,
   where,
   Timestamp,
-  onSnapshot, // ✅ added
+  onSnapshot,
 } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
 
@@ -50,7 +49,7 @@ export default function Home() {
 
   const today = startOfToday();
 
-  /* ================= REAL-TIME TARGETS (FIX) ================= */
+  /* ================= REAL-TIME TARGETS ================= */
 
   useEffect(() => {
     if (!user) return;
@@ -64,37 +63,42 @@ export default function Home() {
       }
     );
 
-    return () => unsub();
+    return unsub;
   }, [user]);
 
-  /* ================= DAILY DATA ================= */
+  /* ================= REAL-TIME MEALS (FIX) ================= */
 
   useEffect(() => {
     if (!user) return;
 
-    const load = async () => {
-      setLoading(true);
+    const q = query(
+      collection(db, "users", user.uid, "meals"),
+      where("createdAt", ">=", Timestamp.fromDate(today))
+    );
 
-      const mealsSnap = await getDocs(
-        query(
-          collection(db, "users", user.uid, "meals"),
-          where("createdAt", ">=", Timestamp.fromDate(today))
-        )
-      );
-
-      const workoutsSnap = await getDocs(
-        query(
-          collection(db, "users", user.uid, "workouts"),
-          where("createdAt", ">=", Timestamp.fromDate(today))
-        )
-      );
-
-      setMeals(mealsSnap.docs.map((d) => d.data()));
-      setWorkouts(workoutsSnap.docs.map((d) => d.data()));
+    const unsub = onSnapshot(q, (snap) => {
+      setMeals(snap.docs.map((d) => d.data()));
       setLoading(false);
-    };
+    });
 
-    load();
+    return unsub;
+  }, [user]);
+
+  /* ================= REAL-TIME WORKOUTS (FIX) ================= */
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "users", user.uid, "workouts"),
+      where("createdAt", ">=", Timestamp.fromDate(today))
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      setWorkouts(snap.docs.map((d) => d.data()));
+    });
+
+    return unsub;
   }, [user]);
 
   /* ================= CALCULATIONS ================= */

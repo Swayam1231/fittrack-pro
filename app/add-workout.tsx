@@ -32,6 +32,7 @@ type Exercise = {
 };
 
 const MET = 6;
+const VOLUME_FACTOR = 0.035;
 
 /* ------------------ COMPONENT ------------------ */
 
@@ -56,12 +57,26 @@ export default function AddWorkout() {
 
   if (!user) return null;
 
-  /* ------------------ HELPERS ------------------ */
+  /* ------------------ CALC HELPERS ------------------ */
 
-  const caloriesBurned =
+  const calcVolume = () => {
+    let v = 0;
+    exercises.forEach((ex) =>
+      ex.sets.forEach((s) => {
+        v += Number(s.reps) * Number(s.weight);
+      })
+    );
+    return v;
+  };
+
+  const metCalories =
     userWeight && duration
       ? Math.round(MET * userWeight * (Number(duration) / 60))
       : 0;
+
+  const volumeCalories = Math.round(calcVolume() * VOLUME_FACTOR);
+
+  const caloriesBurned = Math.max(metCalories, volumeCalories);
 
   /* ------------------ ACTIONS ------------------ */
 
@@ -118,42 +133,14 @@ export default function AddWorkout() {
     );
   };
 
-  /* ------------------ SAVE (FIXED) ------------------ */
+  /* ------------------ SAVE ------------------ */
 
   const saveWorkout = async () => {
-    if (!workoutName.trim()) {
-      Alert.alert("Missing workout name");
-      return;
-    }
-
-    if (!duration || Number(duration) <= 0) {
-      Alert.alert("Enter valid duration");
-      return;
-    }
-
-    if (exercises.length === 0) {
-      Alert.alert("Add at least one exercise");
-      return;
-    }
-
-    for (const ex of exercises) {
-      if (!ex.name.trim()) {
-        Alert.alert("Exercise name cannot be empty");
-        return;
-      }
-
-      for (const s of ex.sets) {
-        if (
-          !s.reps ||
-          !s.weight ||
-          Number(s.reps) <= 0 ||
-          Number(s.weight) <= 0
-        ) {
-          Alert.alert("All sets must have reps and weight");
-          return;
-        }
-      }
-    }
+    if (!workoutName.trim()) return Alert.alert("Missing workout name");
+    if (!duration || Number(duration) <= 0)
+      return Alert.alert("Enter valid duration");
+    if (exercises.length === 0)
+      return Alert.alert("Add at least one exercise");
 
     setSaving(true);
 
@@ -174,7 +161,6 @@ export default function AddWorkout() {
 
       router.back();
     } catch (err) {
-      console.error("SAVE WORKOUT FAILED:", err);
       Alert.alert("Failed to save workout");
     } finally {
       setSaving(false);
@@ -215,9 +201,7 @@ export default function AddWorkout() {
             <TextInput
               placeholder="Exercise name"
               value={ex.name}
-              onChangeText={(v) =>
-                updateExerciseName(exIndex, v)
-              }
+              onChangeText={(v) => updateExerciseName(exIndex, v)}
             />
 
             {ex.sets.map((s, setIndex) => (

@@ -5,13 +5,13 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
-import { useState } from "react";
-import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  addDoc,
-  collection,
-  serverTimestamp,
+  doc,
+  getDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "../../src/firebase/firebase";
 import { Card } from "../../src/components/Card";
@@ -30,33 +30,78 @@ type ExerciseType = {
 
 /* ---------- COMPONENT ---------- */
 
-export default function AddWorkout() {
+export default function EditWorkout() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const uid = auth.currentUser?.uid;
 
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [exercises, setExercises] = useState<ExerciseType[]>([
-    { name: "", sets: [{ reps: 0, weight: 0 }] },
-  ]);
+  const [exercises, setExercises] = useState<ExerciseType[]>([]);
 
-  const saveWorkout = async () => {
-    if (!uid || !name.trim()) return;
+  /* ================= LOAD WORKOUT (FIX) ================= */
 
-    await addDoc(collection(db, "users", uid, "workouts"), {
-      name,
-      exercises,
-      caloriesBurned: 0,      // ✅ already expected by workout tab
-      createdAt: serverTimestamp(), // ✅ CRITICAL FIX
-    });
+  useEffect(() => {
+    if (!uid || !id) return;
 
-    router.back();
-  };
+    const loadWorkout = async () => {
+      const ref = doc(db, "users", uid, "workouts", id);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) return;
+
+      const data = snap.data();
+
+      setName(data.name ?? "");
+      setExercises(data.exercises ?? []);
+      setLoading(false);
+    };
+
+    loadWorkout();
+  }, [uid, id]);
+
+  /* ================= SAVE WORKOUT (FIX) ================= */
+
+  const VOLUME_FACTOR = 0.035;
+
+const calcVolume = () => {
+  let v = 0;
+  exercises.forEach((ex) =>
+    ex.sets.forEach((s) => {
+      v += s.reps * s.weight;
+    })
+  );
+  return v;
+};
+
+const saveWorkout = async () => {
+  if (!uid || !id || !name.trim()) return;
+
+  const caloriesBurned = Math.round(calcVolume() * VOLUME_FACTOR);
+
+  await updateDoc(doc(db, "users", uid, "workouts", id), {
+    name,
+    exercises,
+    caloriesBurned,
+  });
+
+  router.back();
+};
+
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
-          Add Workout
+          Edit Workout
         </Text>
 
         <Card>
@@ -67,6 +112,50 @@ export default function AddWorkout() {
             placeholder="Workout name"
           />
         </Card>
+
+        {/* ⚠️ UI BELOW IS UNCHANGED — JUST BOUND TO STATE */}
+        {exercises.map((ex, exIndex) => (
+          <Card key={exIndex}>
+            <TextInput
+              value={ex.name}
+              onChangeText={(text) => {
+                const copy = [...exercises];
+                copy[exIndex].name = text;
+                setExercises(copy);
+              }}
+              placeholder="Exercise name"
+            />
+
+            {ex.sets.map((s, setIndex) => (
+              <View
+                key={setIndex}
+                style={{ flexDirection: "row", gap: 12 }}
+              >
+                <TextInput
+                  value={String(s.reps)}
+                  keyboardType="numeric"
+                  onChangeText={(text) => {
+                    const copy = [...exercises];
+                    copy[exIndex].sets[setIndex].reps = Number(text);
+                    setExercises(copy);
+                  }}
+                  placeholder="Reps"
+                />
+
+                <TextInput
+                  value={String(s.weight)}
+                  keyboardType="numeric"
+                  onChangeText={(text) => {
+                    const copy = [...exercises];
+                    copy[exIndex].sets[setIndex].weight = Number(text);
+                    setExercises(copy);
+                  }}
+                  placeholder="Weight"
+                />
+              </View>
+            ))}
+          </Card>
+        ))}
 
         <Pressable
           onPress={saveWorkout}
@@ -79,7 +168,7 @@ export default function AddWorkout() {
           }}
         >
           <Text style={{ color: "#fff", fontWeight: "600" }}>
-            Save Workout
+            Save Changes
           </Text>
         </Pressable>
       </ScrollView>

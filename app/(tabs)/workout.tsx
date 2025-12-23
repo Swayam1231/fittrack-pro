@@ -9,7 +9,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   deleteDoc,
   doc,
   Timestamp,
@@ -69,55 +69,50 @@ export default function Workout() {
   const [todayWorkout, setTodayWorkout] = useState<WorkoutType | null>(null);
   const [history, setHistory] = useState<WorkoutType[]>([]);
 
+  /* ================= REAL-TIME WORKOUTS (FIX) ================= */
+
   useEffect(() => {
     if (!uid) return;
 
-    const load = async () => {
-      setLoading(true);
+    const unsub = onSnapshot(
+      collection(db, "users", uid, "workouts"),
+      (snap) => {
+        const all: WorkoutType[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<WorkoutType, "id">),
+        }));
 
-      const snap = await getDocs(
-        collection(db, "users", uid, "workouts")
-      );
+        // SAFE SORT
+        all.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() ?? 0;
+          const bTime = b.createdAt?.toMillis?.() ?? 0;
+          return bTime - aTime;
+        });
 
-      const all: WorkoutType[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<WorkoutType, "id">),
-      }));
+        let today: WorkoutType | null = null;
+        const past: WorkoutType[] = [];
 
-      // ✅ SAFE SORT (even if createdAt missing)
-      all.sort((a, b) => {
-        const aTime = a.createdAt?.toMillis?.() ?? 0;
-        const bTime = b.createdAt?.toMillis?.() ?? 0;
-        return bTime - aTime;
-      });
+        all.forEach((w) => {
+          const date = w.createdAt?.toDate();
+          if (date && isToday(date) && !today) {
+            today = w;
+          } else {
+            past.push(w);
+          }
+        });
 
-      let today: WorkoutType | null = null;
-      const past: WorkoutType[] = [];
+        setTodayWorkout(today);
+        setHistory(past);
+        setLoading(false);
+      }
+    );
 
-      all.forEach((w) => {
-        const date = w.createdAt?.toDate();
-        if (date && isToday(date) && !today) {
-          today = w;
-        } else {
-          past.push(w);
-        }
-      });
-
-      setTodayWorkout(today);
-      setHistory(past);
-      setLoading(false);
-    };
-
-    load();
+    return unsub;
   }, [uid]);
 
   const deleteWorkout = async (id: string) => {
     if (!uid) return;
     await deleteDoc(doc(db, "users", uid, "workouts", id));
-    setHistory((h) => h.filter((w) => w.id !== id));
-    if (todayWorkout?.id === id) {
-      setTodayWorkout(null);
-    }
   };
 
   if (loading) return <Loading label="Loading workouts..." />;

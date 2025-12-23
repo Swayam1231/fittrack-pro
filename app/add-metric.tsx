@@ -2,7 +2,14 @@ import { View, Text, TextInput, ScrollView, Pressable } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { auth, db } from "../src/firebase/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  doc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { Card } from "../src/components/Card";
 
 export default function AddMetric() {
@@ -21,11 +28,27 @@ export default function AddMetric() {
   const saveMetric = async () => {
     if (!uid || !isValid) return;
 
+    /* ---------- SAVE METRIC (EXISTING) ---------- */
     await addDoc(collection(db, "users", uid, "metrics"), {
       weight: numericWeight,
       bodyFat: numericBodyFat ?? null,
       createdAt: serverTimestamp(),
     });
+
+    /* ---------- INIT GOAL WEIGHT (NEW, NO UI) ---------- */
+    const userRef = doc(db, "users", uid);
+    const snap = await getDoc(userRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+
+      // Only set goalWeight if it does NOT exist
+      if (typeof data.goalWeight !== "number") {
+        await updateDoc(userRef, {
+          goalWeight: numericWeight,
+        });
+      }
+    }
 
     router.back();
   };

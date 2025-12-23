@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../src/firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 /* ---- COMPONENTS ---- */
 import EditProfileModal from "../src/components/EditProfileModal";
@@ -24,165 +24,103 @@ import {
 
 export default function Profile() {
   const user = auth.currentUser;
-
   const [profile, setProfile] = useState<any>(null);
+
   const [editOpen, setEditOpen] = useState(false);
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [editTrainingOpen, setEditTrainingOpen] = useState(false);
 
   if (!user) return null;
 
-  /* ---------- FETCH PROFILE ---------- */
+  /* ---------- REAL-TIME PROFILE (FIX) ---------- */
   useEffect(() => {
-    (async () => {
-      const snap = await getDoc(doc(db, "users", user.uid));
+    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
       if (snap.exists()) {
         setProfile(snap.data());
       }
-    })();
-  }, [editOpen, unitModalOpen, editTrainingOpen]);
+    });
+    return unsub;
+  }, [user.uid]);
 
   if (!profile) {
     return (
-      <SafeAreaView
-        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-      >
+      <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text>Loading profile…</Text>
       </SafeAreaView>
     );
   }
 
   /* ---------- UNIT SYSTEM ---------- */
-  const unit: UnitSystem =
-    profile.preferences?.units ?? "imperial";
+  const unit: UnitSystem = profile.preferences?.units ?? "imperial";
 
-  /* ---------- DERIVED VALUES ---------- */
-  const heightDisplay = formatHeight(profile.height, unit);
-  const weightDisplay = formatWeight(profile.weight, unit);
+
+/* ---------- DERIVED VALUES ---------- */
+const heightDisplay = formatHeight(profile.height, unit);
+const weightDisplay = formatWeight(profile.weight, unit);
+
+const leanMass =
+  profile.weight * (1 - (profile.bodyFat ?? 0) / 100);
+
+const leanMassRounded = Number(leanMass.toFixed(2));
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
         {/* ================= CORE PROFILE ================= */}
-        <View
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>
-              Core Profile
-            </Text>
-
+        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Core Profile</Text>
             <Pressable onPress={() => setEditOpen(true)}>
               <Ionicons name="pencil" size={18} color="#2563EB" />
             </Pressable>
           </View>
 
           <View style={{ flexDirection: "row", marginTop: 12 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: "#7C3AED",
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: 12,
-              }}
-            >
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#7C3AED", justifyContent: "center", alignItems: "center", marginRight: 12 }}>
               <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
                 {profile.name?.[0] ?? "U"}
               </Text>
             </View>
 
             <View>
-              <Text style={{ fontSize: 16, fontWeight: "600" }}>
-                {profile.name}
-              </Text>
+              <Text style={{ fontSize: 16, fontWeight: "600" }}>{profile.name}</Text>
               <Text style={{ color: "#6B7280" }}>
                 {profile.age} years • {profile.gender}
               </Text>
             </View>
           </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              marginTop: 16,
-            }}
-          >
+          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginTop: 16 }}>
             <View style={{ width: "48%", marginBottom: 12 }}>
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
-                Height
-              </Text>
-              <Text style={{ fontWeight: "600" }}>
-                {heightDisplay}
-              </Text>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>Height</Text>
+              <Text style={{ fontWeight: "600" }}>{heightDisplay}</Text>
             </View>
 
             <View style={{ width: "48%", marginBottom: 12 }}>
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
-                Current Weight
-              </Text>
-              <Text style={{ fontWeight: "600" }}>
-                {weightDisplay}
-              </Text>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>Current Weight</Text>
+              <Text style={{ fontWeight: "600" }}>{weightDisplay}</Text>
             </View>
 
             <View style={{ width: "48%" }}>
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
-                Fitness Level
-              </Text>
-              <Text style={{ fontWeight: "600" }}>
-                Intermediate
-              </Text>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>Fitness Level</Text>
+              <Text style={{ fontWeight: "600" }}>Intermediate</Text>
             </View>
 
             <View style={{ width: "48%" }}>
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
-                Primary Goal
-              </Text>
-              <Text style={{ fontWeight: "600", color: "#2563EB" }}>
-                Fat Loss
-              </Text>
+              <Text style={{ fontSize: 12, color: "#6B7280" }}>Primary Goal</Text>
+              <Text style={{ fontWeight: "600", color: "#2563EB" }}>Fat Loss</Text>
             </View>
           </View>
         </View>
 
         {/* ================= FITNESS SNAPSHOT ================= */}
-        <View
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
+        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
             Fitness Snapshot
           </Text>
 
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-            }}
-          >
-        
+          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
             <StatCard
               icon="body-outline"
               label="Body Fat"
@@ -193,17 +131,18 @@ export default function Profile() {
             />
 
             <StatCard
-              icon="barbell-outline"
-              label="Lean Mass"
-              value="132.8 lbs"
-              bg="#ECFDF5"
-              color="#059669"
-            />
+  icon="barbell-outline"
+  label="Lean Mass"
+  value={formatWeight(leanMassRounded, unit)}
+  bg="#ECFDF5"
+  color="#059669"
+/>
+
 
             <StatCard
               icon="nutrition-outline"
               label="Daily Calories"
-              value={`${profile.targets.calories}`}
+              value={`${profile.targets?.calories ?? "—"}`}
               subtitle="target"
               bg="#FEF2F2"
               color="#DC2626"
@@ -212,7 +151,7 @@ export default function Profile() {
             <StatCard
               icon="fitness-outline"
               label="Protein"
-              value={`${profile.targets.protein} g`}
+              value={`${profile.targets?.protein ?? "—"} g`}
               subtitle="daily"
               bg="#EEF2FF"
               color="#4F46E5"
@@ -220,40 +159,30 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* ================= PROGRESS OVERVIEW ================= */}
         <ProgressOverview />
-
-        {/* ================= TRAINING PREFERENCES ================= */}
-        <TrainingPreferences
-          onEdit={() => setEditTrainingOpen(true)}
-        />
+        <TrainingPreferences onEdit={() => setEditTrainingOpen(true)} />
 
         {/* ================= GOALS & MILESTONES ================= */}
-        <GoalsMilestones />
+        <GoalsMilestones
+  currentWeight={profile.weight}
+  targetWeight={
+    profile.goalWeight ??
+    profile.targets?.goalWeight ??
+    null
+  }
+  unit={unit}
+/>
 
-        {/* ================= SETTINGS ================= */}
+
         <SettingsSection
           unit={unit}
           onUnitsPress={() => setUnitModalOpen(true)}
         />
       </ScrollView>
 
-      {/* ================= MODALS ================= */}
-      <EditProfileModal
-        visible={editOpen}
-        onClose={() => setEditOpen(false)}
-      />
-
-      <UnitToggleModal
-        visible={unitModalOpen}
-        current={unit}
-        onClose={() => setUnitModalOpen(false)}
-      />
-
-      <EditTrainingPreferencesModal
-        visible={editTrainingOpen}
-        onClose={() => setEditTrainingOpen(false)}
-      />
+      <EditProfileModal visible={editOpen} onClose={() => setEditOpen(false)} />
+      <UnitToggleModal visible={unitModalOpen} current={unit} onClose={() => setUnitModalOpen(false)} />
+      <EditTrainingPreferencesModal visible={editTrainingOpen} onClose={() => setEditTrainingOpen(false)} />
     </SafeAreaView>
   );
 }
