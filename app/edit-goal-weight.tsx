@@ -54,8 +54,10 @@ export default function EditGoalWeight() {
 
     try {
       await updateDoc(doc(db, "users", uid), {
-        goalWeight: numericGoal,
-      });
+  goalWeight: numericGoal,
+  goalStartWeight: currentWeight,
+});
+    
 
       router.back();
     } catch (e) {

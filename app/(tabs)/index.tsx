@@ -237,15 +237,15 @@ export default function Home() {
 
         {/* ---------- STATS GRID ---------- */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-          <StatCard title="Consumed" value={consumedCalories} unit="cal" />
+          {/* <StatCard title="Consumed" value={consumedCalories} unit="cal" /> */}
           <StatCard title="Burned" value={burnedCalories} unit="cal" />
           <StatCard title="Workouts" value={workouts.length} unit="done" />
-          <StatCard
+          {/* <StatCard
             title="Protein"
             value={`${consumedProtein}g`}
             sub={`of ${targetProtein}g`}
             highlight
-          />
+          /> */}
         </View>
 
         {/* ---------- MACRO GOALS ---------- */}
@@ -261,12 +261,12 @@ export default function Home() {
             color="#DC2626"
           />
 
-          <MacroRow
+          {/* <MacroRow
             label="Calories"
             value={consumedCalories}
             target={targetCalories}
             color="#2563EB"
-          />
+          /> */}
         </Card>
 
         {/* ---------- DAILY TIP ---------- */}

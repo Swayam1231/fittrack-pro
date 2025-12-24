@@ -165,13 +165,11 @@ const leanMassRounded = Number(leanMass.toFixed(2));
         {/* ================= GOALS & MILESTONES ================= */}
         <GoalsMilestones
   currentWeight={profile.weight}
-  targetWeight={
-    profile.goalWeight ??
-    profile.targets?.goalWeight ??
-    null
-  }
+  targetWeight={profile.goalWeight ?? null}
+  goalStartWeight={profile.goalStartWeight ?? null}
   unit={unit}
 />
+
 
 
         <SettingsSection

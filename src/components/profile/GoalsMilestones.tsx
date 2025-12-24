@@ -1,236 +1,105 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { auth, db } from "../../firebase/firebase";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
 import { formatWeight, UnitSystem } from "../../utils/unit";
 
 type Props = {
   currentWeight: number;
   targetWeight: number | null;
+  goalStartWeight: number | null;
   unit: UnitSystem;
-};
-
-type Metric = {
-  weight: number;
-  createdAt: any;
 };
 
 export default function GoalsMilestones({
   currentWeight,
   targetWeight,
+  goalStartWeight,
   unit,
 }: Props) {
   const router = useRouter();
-  const uid = auth.currentUser?.uid;
-
-  const [metrics, setMetrics] = useState<Metric[]>([]);
-
-  /* ---------- LIVE METRICS LISTENER ---------- */
-  useEffect(() => {
-    if (!uid) return;
-
-    const q = query(
-      collection(db, "users", uid, "metrics"),
-      orderBy("createdAt", "asc")
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => d.data() as Metric);
-      setMetrics(data);
-    });
-
-    return unsub;
-  }, [uid]);
 
   /* ---------- SAFETY ---------- */
-  if (!targetWeight) {
+  if (!targetWeight || typeof goalStartWeight !== "number") {
     return (
-      <View
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 16,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: "700" }}>
-            Goals & Milestones
-          </Text>
-
-          <Pressable onPress={() => router.push("/edit-goal-weight")}>
-            <Text style={{ color: "#2563EB", fontWeight: "600" }}>
-              Edit
-            </Text>
-          </Pressable>
-        </View>
-
-        <Text style={{ marginTop: 12, color: "#6B7280" }}>
+      <View style={styles.card}>
+        <Header onEdit={() => router.push("/edit-goal-weight")} />
+        <Text style={styles.muted}>
           Set a goal weight to start tracking milestones.
         </Text>
       </View>
     );
   }
 
-  if (metrics.length === 0) {
-    return (
-      <View
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 16,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "700" }}>
-          Goals & Milestones
-        </Text>
-        <Text style={{ marginTop: 12, color: "#6B7280" }}>
-          Add weight entries to unlock milestones.
-        </Text>
-      </View>
-    );
+  /* ---------- DIRECTION-AWARE PROGRESS ---------- */
+  const startWeight = goalStartWeight;
+  const isFatLoss = targetWeight < startWeight;
+
+  let progressDelta = 0;
+
+  if (isFatLoss) {
+    // Fat loss → progress only if weight goes down
+    progressDelta = Math.max(0, startWeight - currentWeight);
+  } else {
+    // Muscle gain → progress only if weight goes up
+    progressDelta = Math.max(0, currentWeight - startWeight);
   }
 
-  /* ---------- PROGRESS FROM HISTORY ---------- */
-  const startWeight = metrics[0].weight;
-  const latestWeight = metrics[metrics.length - 1].weight;
-
   const totalDelta = Math.abs(startWeight - targetWeight);
-  const currentDelta = Math.abs(startWeight - latestWeight);
 
   const progressPercent =
     totalDelta > 0
-      ? Math.min((currentDelta / totalDelta) * 100, 100)
+      ? Math.min((progressDelta / totalDelta) * 100, 100)
       : 0;
 
-  /* ---------- MILESTONES ---------- */
   const milestones = [
-    { percent: 25, label: "25% Progress" },
-    { percent: 50, label: "Halfway There" },
-    { percent: 75, label: "Almost Done" },
-    { percent: 100, label: "Goal Achieved" },
+    { percent: 25, label: "25%" },
+    { percent: 50, label: "50%" },
+    { percent: 75, label: "75%" },
+    { percent: 100, label: "Goal" },
   ];
 
   return (
-    <View
-      style={{
-        backgroundColor: "#fff",
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-      }}
-    >
-      {/* HEADER */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 12,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "700" }}>
-          Goals & Milestones
-        </Text>
-
-        <Pressable onPress={() => router.push("/edit-goal-weight")}>
-          <Text
-            style={{
-              color: "#2563EB",
-              fontWeight: "600",
-              fontSize: 13,
-            }}
-          >
-            Edit
-          </Text>
-        </Pressable>
-      </View>
+    <View style={styles.card}>
+      <Header onEdit={() => router.push("/edit-goal-weight")} />
 
       {/* CURRENT GOAL */}
-      <View
-        style={{
-          backgroundColor: "#F5F3FF",
-          borderRadius: 12,
-          padding: 12,
-          marginBottom: 16,
-        }}
-      >
-        <Text style={{ fontWeight: "600" }}>Current Goal</Text>
-        <Text style={{ marginTop: 6, color: "#374151" }}>
+      <View style={styles.goalBox}>
+        <Text style={styles.bold}>Current Goal</Text>
+
+        <Text style={styles.goalText}>
           Reach {formatWeight(targetWeight, unit)}
         </Text>
 
-        <Text style={{ marginTop: 4, color: "#6B7280", fontSize: 12 }}>
-          Started at {formatWeight(startWeight, unit)} → now{" "}
-          {formatWeight(latestWeight, unit)}
+        <Text style={styles.smallMuted}>
+          Started at {formatWeight(startWeight, unit)} • Now{" "}
+          {formatWeight(currentWeight, unit)}
         </Text>
 
         {/* PROGRESS BAR */}
-        <View style={{ marginTop: 12 }}>
-          <Text style={{ fontSize: 12, color: "#6B7280" }}>
-            Progress
-          </Text>
-
+        <View style={styles.progressBg}>
           <View
-            style={{
-              height: 6,
-              backgroundColor: "#E5E7EB",
-              borderRadius: 4,
-              marginTop: 6,
-            }}
-          >
-            <View
-              style={{
-                width: `${progressPercent}%`,
-                height: "100%",
-                backgroundColor: "#4F46E5",
-                borderRadius: 4,
-              }}
-            />
-          </View>
+            style={[
+              styles.progressFill,
+              { width: `${progressPercent}%` },
+            ]}
+          />
         </View>
       </View>
 
       {/* MILESTONES */}
-      <Text style={{ fontWeight: "600", marginBottom: 8 }}>
-        Milestones
-      </Text>
+      <Text style={styles.bold}>Milestones</Text>
 
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-        }}
-      >
+      <View style={styles.milestoneRow}>
         {milestones.map((m) => {
           const achieved = progressPercent >= m.percent;
 
           return (
             <View
               key={m.percent}
-              style={{
-                width: "22%",
-                backgroundColor: achieved
-                  ? "#ECFDF5"
-                  : "#F3F4F6",
-                borderRadius: 12,
-                padding: 12,
-                alignItems: "center",
-              }}
+              style={[
+                styles.milestoneCard,
+                achieved && styles.milestoneActive,
+              ]}
             >
               <Ionicons
                 name={
@@ -241,17 +110,7 @@ export default function GoalsMilestones({
                 size={20}
                 color={achieved ? "#16A34A" : "#9CA3AF"}
               />
-              <Text
-                style={{
-                  fontSize: 11,
-                  textAlign: "center",
-                  marginTop: 6,
-                  fontWeight: "500",
-                  color: achieved ? "#065F46" : "#6B7280",
-                }}
-              >
-                {m.label}
-              </Text>
+              <Text style={styles.milestoneText}>{m.label}</Text>
             </View>
           );
         })}
@@ -259,3 +118,92 @@ export default function GoalsMilestones({
     </View>
   );
 }
+
+/* ---------- HEADER ---------- */
+function Header({ onEdit }: { onEdit: () => void }) {
+  return (
+    <View style={styles.header}>
+      <Text style={styles.title}>Goals & Milestones</Text>
+      <Pressable onPress={onEdit}>
+        <Text style={styles.edit}>Edit</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/* ---------- STYLES ---------- */
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  edit: {
+    color: "#2563EB",
+    fontWeight: "600",
+  },
+  muted: {
+    color: "#6B7280",
+  },
+  bold: {
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  smallMuted: {
+    marginTop: 4,
+    color: "#6B7280",
+    fontSize: 12,
+  },
+  goalBox: {
+    backgroundColor: "#F5F3FF",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  goalText: {
+    marginTop: 6,
+    color: "#374151",
+  },
+  progressBg: {
+    height: 6,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 4,
+    marginTop: 12,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#4F46E5",
+    borderRadius: 4,
+  },
+  milestoneRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  milestoneCard: {
+    width: "22%",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+  },
+  milestoneActive: {
+    backgroundColor: "#ECFDF5",
+  },
+  milestoneText: {
+    fontSize: 11,
+    marginTop: 6,
+    fontWeight: "500",
+  },
+});
