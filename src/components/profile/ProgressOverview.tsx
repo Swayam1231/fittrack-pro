@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from "react-native";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext"; // ✅ ADDED
 
 /* ---------- TYPES ---------- */
 type Range = 7 | 30 | 90;
@@ -17,6 +18,7 @@ export default function ProgressOverview({
   calorieAdherence = 92,
 }: Props) {
   const [range, setRange] = useState<Range>(7);
+  const { colors } = useTheme(); // ✅ ADDED
 
   const Tab = ({ label, value }: { label: string; value: Range }) => (
     <Pressable
@@ -25,14 +27,15 @@ export default function ProgressOverview({
         flex: 1,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: range === value ? "#E5E7EB" : "transparent",
+        backgroundColor:
+          range === value ? colors.border : "transparent", // ✅
         alignItems: "center",
       }}
     >
       <Text
         style={{
           fontWeight: range === value ? "600" : "400",
-          color: "#111827",
+          color: colors.textPrimary, // ✅
         }}
       >
         {label}
@@ -44,7 +47,7 @@ export default function ProgressOverview({
     <View
       style={{
         height: 6,
-        backgroundColor: "#E5E7EB",
+        backgroundColor: colors.border, // ✅
         borderRadius: 4,
         marginTop: 6,
       }}
@@ -63,14 +66,21 @@ export default function ProgressOverview({
   return (
     <View
       style={{
-        backgroundColor: "#fff",
+        backgroundColor: colors.card, // ✅
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
       }}
     >
       {/* ---------- HEADER ---------- */}
-      <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
+      <Text
+        style={{
+          fontSize: 16,
+          fontWeight: "700",
+          marginBottom: 12,
+          color: colors.textPrimary, // ✅
+        }}
+      >
         Progress Overview
       </Text>
 
@@ -78,7 +88,7 @@ export default function ProgressOverview({
       <View
         style={{
           flexDirection: "row",
-          backgroundColor: "#F3F4F6",
+          backgroundColor: colors.background, // ✅
           borderRadius: 24,
           padding: 4,
           marginBottom: 16,
@@ -92,23 +102,32 @@ export default function ProgressOverview({
       {/* ---------- WEIGHT CHANGE ---------- */}
       <View
         style={{
-          backgroundColor: "#ECFDF5",
+          backgroundColor: colors.background, // ✅
           borderRadius: 12,
           padding: 12,
           marginBottom: 16,
         }}
       >
-        <Text style={{ fontSize: 12, color: "#065F46" }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: colors.textSecondary, // ✅
+          }}
+        >
           Weight Change
         </Text>
 
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-          <Ionicons name="trending-down" size={18} color="#16A34A" />
+          <Ionicons
+            name="trending-down"
+            size={18}
+            color={colors.accent} // ✅
+          />
           <Text
             style={{
               fontSize: 20,
               fontWeight: "700",
-              color: "#16A34A",
+              color: colors.accent, // ✅
               marginLeft: 4,
             }}
           >
@@ -119,7 +138,12 @@ export default function ProgressOverview({
 
       {/* ---------- WORKOUT CONSISTENCY ---------- */}
       <View style={{ marginBottom: 12 }}>
-        <Text style={{ fontSize: 12, color: "#374151" }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: colors.textSecondary, // ✅
+          }}
+        >
           Workout Consistency
         </Text>
 
@@ -127,18 +151,26 @@ export default function ProgressOverview({
           style={{
             fontSize: 18,
             fontWeight: "700",
-            color: "#2563EB",
+            color: colors.accent, // ✅
           }}
         >
           {workoutConsistency}%
         </Text>
 
-        <ProgressBar value={workoutConsistency} color="#2563EB" />
+        <ProgressBar
+          value={workoutConsistency}
+          color={colors.accent} // ✅
+        />
       </View>
 
       {/* ---------- CALORIE ADHERENCE ---------- */}
       <View>
-        <Text style={{ fontSize: 12, color: "#374151" }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: colors.textSecondary, // ✅
+          }}
+        >
           Calorie Adherence
         </Text>
 
@@ -146,13 +178,16 @@ export default function ProgressOverview({
           style={{
             fontSize: 18,
             fontWeight: "700",
-            color: "#7C3AED",
+            color: colors.accent, // ✅
           }}
         >
           {calorieAdherence}%
         </Text>
 
-        <ProgressBar value={calorieAdherence} color="#7C3AED" />
+        <ProgressBar
+          value={calorieAdherence}
+          color={colors.accent} // ✅
+        />
       </View>
     </View>
   );

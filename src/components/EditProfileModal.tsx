@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useTheme } from "../context/ThemeContext"; // ✅ added
 
 /* ---- CALCULATION ENGINE ---- */
 import { calculateTargets } from "../utils/calculateTargets";
@@ -54,6 +55,7 @@ export default function EditProfileModal({
   onClose: () => void;
 }) {
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ added
 
   /* ---- STATE (HOOKS MUST ALWAYS RUN) ---- */
   const [name, setName] = useState("");
@@ -141,12 +143,28 @@ export default function EditProfileModal({
   return (
     <Modal visible={visible} animationType="slide">
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 20,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Edit Core Profile
         </Text>
 
-        <Text style={labelStyle}>Name *</Text>
-        <TextInput value={name} onChangeText={setName} style={inputStyle} />
+        <Text style={[labelStyle, { color: colors.textPrimary }]}>
+          Name *
+        </Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          style={[
+            inputStyle,
+            { backgroundColor: colors.background }, // ✅
+          ]}
+        />
 
         <Segment
           title="Gender *"
@@ -155,37 +173,57 @@ export default function EditProfileModal({
           onChange={setGender}
         />
 
-        <Text style={labelStyle}>Age *</Text>
+        <Text style={[labelStyle, { color: colors.textPrimary }]}>
+          Age *
+        </Text>
         <TextInput
           value={age}
           onChangeText={setAge}
           keyboardType="number-pad"
-          style={inputStyle}
+          style={[
+            inputStyle,
+            { backgroundColor: colors.background }, // ✅
+          ]}
         />
 
-        <Text style={labelStyle}>Height (cm) *</Text>
+        <Text style={[labelStyle, { color: colors.textPrimary }]}>
+          Height (cm) *
+        </Text>
         <TextInput
           value={height}
           onChangeText={setHeight}
           keyboardType="number-pad"
-          style={inputStyle}
+          style={[
+            inputStyle,
+            { backgroundColor: colors.background }, // ✅
+          ]}
         />
 
-        <Text style={labelStyle}>Weight (kg) *</Text>
+        <Text style={[labelStyle, { color: colors.textPrimary }]}>
+          Weight (kg) *
+        </Text>
         <TextInput
           value={weight}
           onChangeText={setWeight}
           keyboardType="number-pad"
-          style={inputStyle}
+          style={[
+            inputStyle,
+            { backgroundColor: colors.background }, // ✅
+          ]}
         />
 
-        <Text style={labelStyle}>Body Fat % (optional)</Text>
+        <Text style={[labelStyle, { color: colors.textPrimary }]}>
+          Body Fat % (optional)
+        </Text>
         <TextInput
           value={bodyFat}
           onChangeText={setBodyFat}
           keyboardType="decimal-pad"
           placeholder="e.g. 22"
-          style={inputStyle}
+          style={[
+            inputStyle,
+            { backgroundColor: colors.background }, // ✅
+          ]}
         />
 
         <Segment
@@ -202,14 +240,22 @@ export default function EditProfileModal({
           onChange={setPrimaryGoal}
         />
 
-        <Pressable onPress={saveProfile} style={saveBtn}>
+        <Pressable
+          onPress={saveProfile}
+          style={[saveBtn, { backgroundColor: colors.accent }]} // ✅
+        >
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
             Save & Recalculate
           </Text>
         </Pressable>
 
         <Pressable onPress={onClose} style={{ marginTop: 12 }}>
-          <Text style={{ textAlign: "center", color: "#6B7280" }}>
+          <Text
+            style={{
+              textAlign: "center",
+              color: colors.textSecondary, // ✅
+            }}
+          >
             Cancel
           </Text>
         </Pressable>
@@ -230,9 +276,13 @@ function Segment({
   value: string;
   onChange: (v: any) => void;
 }) {
+  const { colors } = useTheme(); // ✅ added
+
   return (
     <>
-      <Text style={labelStyle}>{title}</Text>
+      <Text style={[labelStyle, { color: colors.textPrimary }]}>
+        {title}
+      </Text>
       <View style={{ flexDirection: "row", borderRadius: 12, overflow: "hidden" }}>
         {options.map((o) => (
           <Pressable
@@ -241,13 +291,14 @@ function Segment({
             style={{
               flex: 1,
               paddingVertical: 12,
-              backgroundColor: value === o ? "#2563EB" : "#E5E7EB",
+              backgroundColor:
+                value === o ? colors.accent : colors.border, // ✅
               alignItems: "center",
             }}
           >
             <Text
               style={{
-                color: value === o ? "#fff" : "#111827",
+                color: value === o ? "#fff" : colors.textPrimary, // ✅
                 fontWeight: "600",
               }}
             >
@@ -268,13 +319,11 @@ const labelStyle = {
 };
 
 const inputStyle = {
-  backgroundColor: "#F9FAFB",
   borderRadius: 12,
   padding: 14,
 };
 
 const saveBtn = {
-  backgroundColor: "#2563EB",
   padding: 16,
   borderRadius: 14,
   alignItems: "center" as const,

@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from "react-native";
+import { useTheme } from "../context/ThemeContext"; // ✅ added
 
 type Option<T extends string> = {
   label: string;
@@ -16,6 +17,8 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
 }: SegmentedControlProps<T>) {
+  const { colors } = useTheme(); // ✅ added
+
   return (
     <View style={{ flexDirection: "row", borderRadius: 10, overflow: "hidden" }}>
       {options.map((opt) => (
@@ -25,13 +28,15 @@ export function SegmentedControl<T extends string>({
           style={{
             flex: 1,
             padding: 12,
-            backgroundColor: value === opt.value ? "#2563EB" : "#E5E7EB",
+            backgroundColor:
+              value === opt.value ? colors.accent : colors.border, // ✅
           }}
         >
           <Text
             style={{
               textAlign: "center",
-              color: value === opt.value ? "#fff" : "#111",
+              color:
+                value === opt.value ? "#fff" : colors.textPrimary, // ✅
               fontWeight: "600",
             }}
           >

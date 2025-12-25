@@ -11,6 +11,7 @@ import {
 import { auth, db } from "../../src/firebase/firebase";
 import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 /* ================= HELPERS ================= */
 
@@ -34,6 +35,7 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function Progress() {
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [loading, setLoading] = useState(true);
   const [meals, setMeals] = useState<any[]>([]);
@@ -93,59 +95,26 @@ export default function Progress() {
     return Math.round(total / 7);
   }, [caloriesByDay]);
 
-  // /* ================= STREAK ================= */
-
-  // const streak = useMemo(() => {
-  //   if (!targets?.calories) return 0;
-
-  //   const dailyCalories = new Map<string, number>();
-
-  //   meals.forEach((m) => {
-  //     if (!m.createdAt) return;
-  //     const key = startOfDay(m.createdAt.toDate()).toISOString();
-  //     dailyCalories.set(
-  //       key,
-  //       (dailyCalories.get(key) || 0) + (m.calories || 0)
-  //     );
-  //   });
-
-  //   let count = 0;
-  //   let cursor = startOfDay(new Date());
-
-  //   while (true) {
-  //     const key = cursor.toISOString();
-  //     const consumed = dailyCalories.get(key);
-  //     if (!consumed) break;
-
-  //     const withinRange =
-  //       consumed >= targets.calories * 0.9 &&
-  //       consumed <= targets.calories * 1.1;
-
-  //     if (!withinRange) break;
-
-  //     count++;
-  //     cursor.setDate(cursor.getDate() - 1);
-  //   }
-
-  //   return count;
-  // }, [meals, targets]);
-
-  // if (loading) {
-  //   return <Loading label="Loading progress…" />;
-  // }
-
   /* ================= UI ================= */
 
+  if (loading) return <Loading label="Loading progress..." />;
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 16,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Progress
         </Text>
 
         {/* SUMMARY */}
         <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
-          {/* <Stat label="Calorie Streak" value={`${streak} days`} /> */}
           <Stat
             label="Weekly Avg Calories"
             value={`${weeklyAvgCalories} kcal`}
@@ -175,10 +144,16 @@ function Stat({
   label: string;
   value: string;
 }) {
+  const { colors } = useTheme(); // ✅ ADDED
+
   return (
     <Card style={{ flex: 1, alignItems: "center" }}>
-      <Text style={{ fontSize: 20, fontWeight: "700" }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: "#6B7280" }}>{label}</Text>
+      <Text style={{ fontSize: 20, fontWeight: "700", color: colors.textPrimary }}>
+        {value}
+      </Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+        {label}
+      </Text>
     </Card>
   );
 }
@@ -190,9 +165,17 @@ function ChartCard({
   title: string;
   children: React.ReactNode;
 }) {
+  const { colors } = useTheme(); // ✅ ADDED
+
   return (
     <Card>
-      <Text style={{ fontWeight: "600", marginBottom: 12 }}>
+      <Text
+        style={{
+          fontWeight: "600",
+          marginBottom: 12,
+          color: colors.textPrimary, // ✅
+        }}
+      >
         {title}
       </Text>
       {children}
@@ -211,6 +194,7 @@ function BarChart({
   unit: string;
   accent?: boolean;
 }) {
+  const { colors } = useTheme(); // ✅ ADDED
   const max = Math.max(...data, 1);
   const mid = Math.round(max / 2);
 
@@ -224,9 +208,9 @@ function BarChart({
           paddingVertical: 4,
         }}
       >
-        <Text style={yLabel}>{max}</Text>
-        <Text style={yLabel}>{mid}</Text>
-        <Text style={yLabel}>0</Text>
+        <Text style={[yLabel, { color: colors.textSecondary }]}>{max}</Text>
+        <Text style={[yLabel, { color: colors.textSecondary }]}>{mid}</Text>
+        <Text style={[yLabel, { color: colors.textSecondary }]}>0</Text>
       </View>
 
       {/* BARS */}
@@ -237,11 +221,15 @@ function BarChart({
               style={{
                 height: `${(v / max) * 100}%`,
                 width: 14,
-                backgroundColor: accent ? "#16A34A" : "#2563EB",
+                backgroundColor: accent
+                  ? "#16A34A" // 🔒 intentional green accent
+                  : colors.accent, // ✅
                 borderRadius: 6,
               }}
             />
-            <Text style={{ fontSize: 10 }}>{DAYS[i]}</Text>
+            <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+              {DAYS[i]}
+            </Text>
           </View>
         ))}
       </View>

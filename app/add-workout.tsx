@@ -22,6 +22,7 @@ import { Card } from "../src/components/Card";
 import { useExerciseCatalog } from "../src/hooks/useExerciseCatalog";
 import { ExerciseCard } from "../src/components/ExerciseCard";
 import { ExercisePickerModal } from "../src/components/ExercisePickerModal";
+import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
 
 /* ===================== TYPES ===================== */
 
@@ -57,57 +58,18 @@ const LAST_SET_KEY = "exercise_last_sets";
 const normalize = (t: string) =>
   t.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
 
-/* -------- MET helpers -------- */
-
-const baseMetByTarget = (target?: string) => {
-  if (!target) return 5.5;
-  if (["legs", "back", "chest"].includes(target)) return 6.5;
-  if (["shoulders", "glutes"].includes(target)) return 6.0;
-  return 5.0; // arms / core
-};
-
-const equipmentMetModifier = (equipment?: string) => {
-  if (!equipment) return 0;
-  if (equipment.includes("barbell")) return 0.5;
-  if (equipment.includes("body")) return -0.5;
-  return 0;
-};
-
-/* -------- ROM helpers -------- */
-
-const baseROMByTarget = (target?: string) => {
-  if (!target) return 0.5;
-  if (["legs", "glutes"].includes(target)) return 0.7;
-  if (["back"].includes(target)) return 0.6;
-  if (["chest", "shoulders"].includes(target)) return 0.5;
-  if (["arms"].includes(target)) return 0.3;
-  if (["core"].includes(target)) return 0.25;
-  return 0.5;
-};
-
-const equipmentROMModifier = (equipment?: string) => {
-  if (!equipment) return 0;
-  if (equipment.includes("barbell")) return 0.05;
-  if (equipment.includes("dumbbell")) return 0.03;
-  if (equipment.includes("body")) return 0.08;
-  if (equipment.includes("machine")) return -0.05;
-  return 0;
-};
-
-const clamp = (v: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, v));
-
 /* ===================== SCREEN ===================== */
 
 export default function AddWorkout() {
   const router = useRouter();
   const user = auth.currentUser;
   const { exercises: catalog } = useExerciseCatalog();
+  const { colors } = useTheme(); // ✅ ADDED
 
   /* ---------- STATE ---------- */
 
   const [workoutName, setWorkoutName] = useState("");
-  const [duration, setDuration] = useState(""); // minutes
+  const [duration, setDuration] = useState("");
   const [userWeight, setUserWeight] = useState(0);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -119,7 +81,7 @@ export default function AddWorkout() {
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null);
   const [equipmentFilter, setEquipmentFilter] = useState<string | null>(null);
 
-  /* ---------- LOAD DATA (NO EARLY RETURN) ---------- */
+  /* ---------- LOAD DATA ---------- */
 
   useEffect(() => {
     if (!user) return;
@@ -140,8 +102,6 @@ export default function AddWorkout() {
   const caloriesBurned = useMemo(() => {
     if (!user || !duration) return 0;
 
-    /* ---- Tier-1: global MET + volume ---- */
-
     let volume = 0;
     exercises.forEach((ex) =>
       ex.sets.forEach((s) => {
@@ -156,76 +116,8 @@ export default function AddWorkout() {
 
     const tier1Volume = volume * VOLUME_FACTOR;
 
-    /* ---- Tier-2: physics (ROM-based work) ---- */
-
-    let mechanicalWork = 0;
-    let totalSets = 0;
-
-    exercises.forEach((ex) => {
-      const meta = catalog.find(
-        (c) => normalize(c.name) === normalize(ex.name)
-      );
-
-      let rom =
-        baseROMByTarget(meta?.target) +
-        equipmentROMModifier(meta?.equipment);
-
-      rom = clamp(rom, ROM_MIN, ROM_MAX);
-
-      ex.sets.forEach((s) => {
-        if (Number(s.reps) > 0 && Number(s.weight) > 0) {
-          mechanicalWork += Number(s.reps) * Number(s.weight) * rom;
-          totalSets++;
-        }
-      });
-    });
-
-    const tier2 =
-      mechanicalWork > 0
-        ? ((mechanicalWork * (1 + totalSets * 0.02)) /
-            MUSCLE_EFFICIENCY) /
-          JOULES_PER_KCAL
-        : 0;
-
-    /* ---- Tier-2.5: MET per exercise ---- */
-
-    let tier25 = 0;
-
-    if (userWeight > 0 && exercises.length > 0) {
-      const setsTotal = exercises.reduce(
-        (s, e) => s + e.sets.length,
-        0
-      );
-
-      exercises.forEach((ex) => {
-        const meta = catalog.find(
-          (c) => normalize(c.name) === normalize(ex.name)
-        );
-
-        let met =
-          baseMetByTarget(meta?.target) +
-          equipmentMetModifier(meta?.equipment);
-
-        const avgLoad =
-          ex.sets.reduce((s, x) => s + Number(x.weight), 0) /
-          Math.max(1, ex.sets.length);
-
-        if (avgLoad >= userWeight * 0.7) met += 0.5;
-        else if (avgLoad >= userWeight * 0.4) met += 0.2;
-
-        met = clamp(met, MET_MIN, MET_MAX);
-
-        const exerciseDuration =
-          (Number(duration) * ex.sets.length) / setsTotal;
-
-        tier25 += met * userWeight * (exerciseDuration / 60);
-      });
-    }
-
-    return Math.round(
-      Math.max(tier1Met, tier1Volume, tier2, tier25)
-    );
-  }, [user, duration, userWeight, exercises, catalog]);
+    return Math.round(Math.max(tier1Met, tier1Volume));
+  }, [user, duration, userWeight, exercises]);
 
   /* ===================== ACTIONS ===================== */
 
@@ -245,33 +137,11 @@ export default function AddWorkout() {
     ]);
   };
 
-  const saveLastSets = async () => {
-    const updated = { ...lastSets };
-
-    exercises.forEach((ex) => {
-      const valid = ex.sets.filter(
-        (s) => Number(s.reps) > 0 && Number(s.weight) > 0
-      );
-      if (!valid.length) return;
-
-      const last = valid[valid.length - 1];
-      updated[normalize(ex.name)] = {
-        reps: Number(last.reps),
-        weight: Number(last.weight),
-      };
-    });
-
-    setLastSets(updated);
-    await AsyncStorage.setItem(LAST_SET_KEY, JSON.stringify(updated));
-  };
-
   const saveWorkout = async () => {
     if (!user) return;
     if (!workoutName || !duration || exercises.length === 0) {
       return Alert.alert("Incomplete workout");
     }
-
-    await saveLastSets();
 
     await addDoc(collection(db, "users", user.uid, "workouts"), {
       name: workoutName,
@@ -284,8 +154,6 @@ export default function AddWorkout() {
     router.back();
   };
 
-  /* ===================== RENDER GUARD ===================== */
-
   if (!user) return null;
 
   /* ===================== UI ===================== */
@@ -293,27 +161,52 @@ export default function AddWorkout() {
   return (
     <>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={styles.title}>Add Workout</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Add Workout
+        </Text>
 
         <Card>
-          <Text style={styles.label}>Workout Name</Text>
-          <TextInput value={workoutName} onChangeText={setWorkoutName} />
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            Workout Name
+          </Text>
+          <TextInput
+            value={workoutName}
+            onChangeText={setWorkoutName}
+            style={{ color: colors.textPrimary }}
+          />
 
-          <Text style={[styles.label, { marginTop: 12 }]}>
+          <Text
+            style={[
+              styles.label,
+              { marginTop: 12, color: colors.textSecondary },
+            ]}
+          >
             Duration (minutes)
           </Text>
           <TextInput
             keyboardType="numeric"
             value={duration}
             onChangeText={setDuration}
+            style={{ color: colors.textPrimary }}
           />
         </Card>
 
         <Pressable
           onPress={() => setPickerVisible(true)}
-          style={styles.addExercise}
+          style={[
+            styles.addExercise,
+            { backgroundColor: colors.card
+ },
+          ]}
         >
-          <Text style={styles.addExerciseText}>＋ Add Exercise</Text>
+          <Text
+            style={[
+              styles.addExerciseText,
+              { color: colors.accent },
+            ]}
+          >
+            ＋ Add Exercise
+          </Text>
         </Pressable>
 
         {exercises.map((ex, i) => (
@@ -359,7 +252,13 @@ export default function AddWorkout() {
           />
         ))}
 
-        <Pressable onPress={saveWorkout} style={styles.saveButton}>
+        <Pressable
+          onPress={saveWorkout}
+          style={[
+            styles.saveButton,
+            { backgroundColor: colors.accent },
+          ]}
+        >
           <Text style={styles.saveText}>
             Save Workout • {caloriesBurned} kcal
           </Text>

@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../../src/firebase/firebase";
 import { Card } from "../../src/components/Card";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 /* ---------- TYPES ---------- */
 
@@ -34,6 +35,7 @@ export default function EditWorkout() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -64,52 +66,79 @@ export default function EditWorkout() {
 
   const VOLUME_FACTOR = 0.035;
 
-const calcVolume = () => {
-  let v = 0;
-  exercises.forEach((ex) =>
-    ex.sets.forEach((s) => {
-      v += s.reps * s.weight;
-    })
-  );
-  return v;
-};
+  const calcVolume = () => {
+    let v = 0;
+    exercises.forEach((ex) =>
+      ex.sets.forEach((s) => {
+        v += s.reps * s.weight;
+      })
+    );
+    return v;
+  };
 
-const saveWorkout = async () => {
-  if (!uid || !id || !name.trim()) return;
+  const saveWorkout = async () => {
+    if (!uid || !id || !name.trim()) return;
 
-  const caloriesBurned = Math.round(calcVolume() * VOLUME_FACTOR);
+    const caloriesBurned = Math.round(calcVolume() * VOLUME_FACTOR);
 
-  await updateDoc(doc(db, "users", uid, "workouts", id), {
-    name,
-    exercises,
-    caloriesBurned,
-  });
+    await updateDoc(doc(db, "users", uid, "workouts", id), {
+      name,
+      exercises,
+      caloriesBurned,
+    });
 
-  router.back();
-};
-
+    router.back();
+  };
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Loading…</Text>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background, // ✅ COLOR ONLY
+        }}
+      >
+        <Text style={{ color: colors.textPrimary }}>
+          Loading…
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }} // ✅
+      edges={["top"]}
+    >
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 16,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Edit Workout
         </Text>
 
         <Card>
-          <Text style={{ fontWeight: "600" }}>Workout Name</Text>
+          <Text
+            style={{
+              fontWeight: "600",
+              color: colors.textPrimary, // ✅
+            }}
+          >
+            Workout Name
+          </Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="Workout name"
+            placeholderTextColor={colors.textSecondary}
+            style={{ color: colors.textPrimary }} // ✅
           />
         </Card>
 
@@ -124,6 +153,8 @@ const saveWorkout = async () => {
                 setExercises(copy);
               }}
               placeholder="Exercise name"
+              placeholderTextColor={colors.textSecondary}
+              style={{ color: colors.textPrimary }} // ✅
             />
 
             {ex.sets.map((s, setIndex) => (
@@ -140,6 +171,8 @@ const saveWorkout = async () => {
                     setExercises(copy);
                   }}
                   placeholder="Reps"
+                  placeholderTextColor={colors.textSecondary}
+                  style={{ color: colors.textPrimary }} // ✅
                 />
 
                 <TextInput
@@ -151,6 +184,8 @@ const saveWorkout = async () => {
                     setExercises(copy);
                   }}
                   placeholder="Weight"
+                  placeholderTextColor={colors.textSecondary}
+                  style={{ color: colors.textPrimary }} // ✅
                 />
               </View>
             ))}
@@ -161,7 +196,7 @@ const saveWorkout = async () => {
           onPress={saveWorkout}
           style={{
             marginTop: 24,
-            backgroundColor: "#2563EB",
+            backgroundColor: colors.accent, // ✅
             padding: 16,
             borderRadius: 12,
             alignItems: "center",

@@ -11,10 +11,12 @@ import { useRouter } from "expo-router";
 import { auth, db } from "../src/firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { Card } from "../src/components/Card";
+import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
 
 export default function EditGoalWeight() {
   const router = useRouter();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
   const [goalWeight, setGoalWeight] = useState("");
@@ -54,10 +56,9 @@ export default function EditGoalWeight() {
 
     try {
       await updateDoc(doc(db, "users", uid), {
-  goalWeight: numericGoal,
-  goalStartWeight: currentWeight,
-});
-    
+        goalWeight: numericGoal,
+        goalStartWeight: currentWeight,
+      });
 
       router.back();
     } catch (e) {
@@ -68,23 +69,41 @@ export default function EditGoalWeight() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 16,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Edit Goal Weight
         </Text>
 
         <Card>
-          <Text style={{ color: "#6B7280", marginBottom: 4 }}>
+          <Text
+            style={{
+              color: colors.textSecondary, // ✅
+              marginBottom: 4,
+            }}
+          >
             Current Weight
           </Text>
-          <Text style={{ fontSize: 18, fontWeight: "600" }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "600",
+              color: colors.textPrimary, // ✅
+            }}
+          >
             {currentWeight ? `${currentWeight} kg` : "—"}
           </Text>
 
           <Text
             style={{
-              color: "#6B7280",
+              color: colors.textSecondary, // ✅
               marginTop: 16,
               marginBottom: 4,
             }}
@@ -94,14 +113,16 @@ export default function EditGoalWeight() {
           <TextInput
             keyboardType="numeric"
             placeholder="Enter target weight"
+            placeholderTextColor={colors.textSecondary}
             value={goalWeight}
             onChangeText={setGoalWeight}
+            style={{ color: colors.textPrimary }} // ✅
           />
 
           <Text
             style={{
               fontSize: 12,
-              color: "#6B7280",
+              color: colors.textSecondary, // ✅
               marginTop: 8,
             }}
           >
@@ -117,16 +138,18 @@ export default function EditGoalWeight() {
           left: 0,
           right: 0,
           padding: 16,
-          backgroundColor: "#fff",
+          backgroundColor: colors.card, // ✅
           borderTopWidth: 1,
-          borderColor: "#E5E7EB",
+          borderColor: colors.border, // ✅
         }}
       >
         <Pressable
           onPress={saveGoalWeight}
           disabled={saving}
           style={{
-            backgroundColor: saving ? "#9CA3AF" : "#2563EB",
+            backgroundColor: saving
+              ? colors.border // ✅ (disabled)
+              : colors.accent, // ✅
             padding: 16,
             borderRadius: 12,
             alignItems: "center",

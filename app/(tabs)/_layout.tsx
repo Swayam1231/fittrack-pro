@@ -1,21 +1,27 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 export default function TabLayout() {
+  const { colors } = useTheme(); // ✅ ADDED
+
   return (
     <SafeAreaView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }} // ✅ COLOR ONLY
       edges={["top"]}
     >
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#2563EB",
+          tabBarActiveTintColor: colors.accent, // ✅ COLOR ONLY
+          tabBarInactiveTintColor: colors.textSecondary, // ✅ COLOR ONLY
           tabBarStyle: {
             height: 60,
             paddingTop: 6,
             paddingBottom: 6,
+            backgroundColor: colors.card, // ✅ COLOR ONLY
+            borderTopColor: colors.border, // ✅ COLOR ONLY
           },
         }}
       >
@@ -44,7 +50,11 @@ export default function TabLayout() {
           options={{
             title: "Nutrition",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="restaurant-outline" size={size} color={color} />
+              <Ionicons
+                name="restaurant-outline"
+                size={size}
+                color={color}
+              />
             ),
           }}
         />
@@ -54,7 +64,11 @@ export default function TabLayout() {
           options={{
             title: "Progress",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="analytics-outline" size={size} color={color} />
+              <Ionicons
+                name="analytics-outline"
+                size={size}
+                color={color}
+              />
             ),
           }}
         />

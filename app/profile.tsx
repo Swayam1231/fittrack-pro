@@ -16,9 +16,11 @@ import EditTrainingPreferencesModal from "../src/components/profile/EditTraining
 
 /* ---- UTILS ---- */
 import { formatHeight, formatWeight } from "../src/utils/unit";
+import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
 
 export default function Profile() {
   const user = auth.currentUser;
+  const { colors } = useTheme(); // ✅ ADDED
   const [profile, setProfile] = useState<any>(null);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -43,9 +45,16 @@ export default function Profile() {
   if (!profile) {
     return (
       <SafeAreaView
-        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background, // ✅
+        }}
       >
-        <Text>Loading profile…</Text>
+        <Text style={{ color: colors.textPrimary }}>
+          Loading profile…
+        </Text>
       </SafeAreaView>
     );
   }
@@ -63,12 +72,12 @@ export default function Profile() {
   const leanMassRounded = Number(leanMass.toFixed(2));
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {/* ================= CORE PROFILE ================= */}
         <View
           style={{
-            backgroundColor: "#fff",
+            backgroundColor: colors.card, // ✅
             borderRadius: 16,
             padding: 16,
             marginBottom: 16,
@@ -81,11 +90,21 @@ export default function Profile() {
               alignItems: "center",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: colors.textPrimary, // ✅
+              }}
+            >
               Core Profile
             </Text>
             <Pressable onPress={() => setEditOpen(true)}>
-              <Ionicons name="pencil" size={18} color="#2563EB" />
+              <Ionicons
+                name="pencil"
+                size={18}
+                color={colors.accent} // ✅
+              />
             </Pressable>
           </View>
 
@@ -95,24 +114,34 @@ export default function Profile() {
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: "#7C3AED",
+                backgroundColor: colors.accent, // ✅ (was purple)
                 justifyContent: "center",
                 alignItems: "center",
                 marginRight: 12,
               }}
             >
               <Text
-                style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}
+                style={{
+                  color: "#fff",
+                  fontSize: 18,
+                  fontWeight: "700",
+                }}
               >
                 {profile.name?.[0] ?? "U"}
               </Text>
             </View>
 
             <View>
-              <Text style={{ fontSize: 16, fontWeight: "600" }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: colors.textPrimary, // ✅
+                }}
+              >
                 {profile.name}
               </Text>
-              <Text style={{ color: "#6B7280" }}>
+              <Text style={{ color: colors.textSecondary }}>
                 {profile.age} years • {profile.gender}
               </Text>
             </View>
@@ -127,19 +156,39 @@ export default function Profile() {
             }}
           >
             <View style={{ width: "48%", marginBottom: 12 }}>
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary, // ✅
+                }}
+              >
                 Height
               </Text>
-              <Text style={{ fontWeight: "600" }}>
+              <Text
+                style={{
+                  fontWeight: "600",
+                  color: colors.textPrimary, // ✅
+                }}
+              >
                 {heightDisplay}
               </Text>
             </View>
 
             <View style={{ width: "48%", marginBottom: 12 }}>
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary, // ✅
+                }}
+              >
                 Current Weight
               </Text>
-              <Text style={{ fontWeight: "600" }}>
+              <Text
+                style={{
+                  fontWeight: "600",
+                  color: colors.textPrimary, // ✅
+                }}
+              >
                 {weightDisplay}
               </Text>
             </View>
@@ -149,14 +198,19 @@ export default function Profile() {
         {/* ================= FITNESS SNAPSHOT ================= */}
         <View
           style={{
-            backgroundColor: "#fff",
+            backgroundColor: colors.card, // ✅
             borderRadius: 16,
             padding: 16,
             marginBottom: 16,
           }}
         >
           <Text
-            style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}
+            style={{
+              fontSize: 16,
+              fontWeight: "700",
+              marginBottom: 12,
+              color: colors.textPrimary, // ✅
+            }}
           >
             Fitness Snapshot
           </Text>
@@ -173,16 +227,16 @@ export default function Profile() {
               label="Body Fat"
               value={`${profile.bodyFat ?? "—"}%`}
               subtitle="Estimated"
-              bg="#FDF2F8"
-              color="#DB2777"
+              bg={colors.card}   /* unchanged prop, themed upstream */
+              color={colors.danger}
             />
 
             <StatCard
               icon="barbell-outline"
               label="Lean Mass"
               value={formatWeight(leanMassRounded, unit)}
-              bg="#ECFDF5"
-              color="#059669"
+              bg={colors.card}
+              color={colors.accent}
             />
           </View>
         </View>

@@ -1,4 +1,11 @@
-import { View, Text, TextInput, ScrollView, Pressable, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  Pressable,
+  Alert,
+} from "react-native";
 import { useEffect, useState } from "react";
 import { auth, db } from "../src/firebase/firebase";
 import {
@@ -12,6 +19,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { Card } from "../src/components/Card";
+import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
 
 type Preset = {
   id: string;
@@ -20,6 +28,8 @@ type Preset = {
 
 export default function ExercisePresets() {
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
+
   const [presets, setPresets] = useState<Preset[]>([]);
   const [name, setName] = useState("");
 
@@ -79,23 +89,39 @@ export default function ExercisePresets() {
   };
 
   return (
-    <ScrollView style={{ padding: 16 }}>
-      <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>
+    <ScrollView
+      style={{
+        padding: 16,
+        backgroundColor: colors.background, // ✅
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 22,
+          fontWeight: "700",
+          marginBottom: 12,
+          color: colors.textPrimary, // ✅
+        }}
+      >
         Exercise Presets
       </Text>
 
       <Card>
-        <Text>Add New Exercise</Text>
+        <Text style={{ color: colors.textPrimary }}>
+          Add New Exercise
+        </Text>
         <TextInput
           placeholder="e.g. Squat"
+          placeholderTextColor={colors.textSecondary}
           value={name}
           onChangeText={setName}
+          style={{ color: colors.textPrimary }} // ✅
         />
 
         <Pressable
           onPress={addPreset}
           style={{
-            backgroundColor: "#2563EB",
+            backgroundColor: colors.accent, // ✅
             padding: 12,
             borderRadius: 10,
             alignItems: "center",
@@ -110,7 +136,7 @@ export default function ExercisePresets() {
 
       <Card>
         {presets.length === 0 && (
-          <Text style={{ color: "#6B7280" }}>
+          <Text style={{ color: colors.textSecondary }}>
             No presets yet.
           </Text>
         )}
@@ -122,10 +148,12 @@ export default function ExercisePresets() {
             style={{
               paddingVertical: 10,
               borderBottomWidth: 1,
-              borderColor: "#E5E7EB",
+              borderColor: colors.border, // ✅
             }}
           >
-            <Text>{p.name}</Text>
+            <Text style={{ color: colors.textPrimary }}>
+              {p.name}
+            </Text>
           </Pressable>
         ))}
       </Card>

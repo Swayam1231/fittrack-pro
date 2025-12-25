@@ -1,15 +1,18 @@
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext"; // ✅ added
 
 type Props = {
   onEdit: () => void;
 };
 
 export default function TrainingPreferences({ onEdit }: Props) {
+  const { colors } = useTheme(); // ✅ added
+
   return (
     <View
       style={{
-        backgroundColor: "#fff",
+        backgroundColor: colors.card, // ✅
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
@@ -23,12 +26,22 @@ export default function TrainingPreferences({ onEdit }: Props) {
           marginBottom: 12,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "700" }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "700",
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Training Preferences
         </Text>
 
         <Pressable onPress={onEdit}>
-          <Ionicons name="pencil" size={18} color="#2563EB" />
+          <Ionicons
+            name="pencil"
+            size={18}
+            color={colors.accent} // ✅
+          />
         </Pressable>
       </View>
 
@@ -46,11 +59,20 @@ export default function TrainingPreferences({ onEdit }: Props) {
             justifyContent: "space-between",
             paddingVertical: 8,
             borderBottomWidth: 0.5,
-            borderColor: "#E5E7EB",
+            borderColor: colors.border, // ✅
           }}
         >
-          <Text style={{ color: "#6B7280" }}>{item.label}</Text>
-          <Text style={{ fontWeight: "600" }}>{item.value}</Text>
+          <Text style={{ color: colors.textSecondary }}>
+            {item.label}
+          </Text>
+          <Text
+            style={{
+              fontWeight: "600",
+              color: colors.textPrimary, // ✅
+            }}
+          >
+            {item.value}
+          </Text>
         </View>
       ))}
     </View>

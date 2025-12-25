@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { formatWeight, UnitSystem } from "../../utils/unit";
+import { useTheme } from "../../context/ThemeContext"; // ✅ ADDED
 
 type Props = {
   currentWeight: number;
@@ -17,13 +18,22 @@ export default function GoalsMilestones({
   unit,
 }: Props) {
   const router = useRouter();
+  const { colors } = useTheme(); // ✅ ADDED
 
   /* ---------- SAFETY ---------- */
   if (!targetWeight || typeof goalStartWeight !== "number") {
     return (
-      <View style={styles.card}>
-        <Header onEdit={() => router.push("/edit-goal-weight")} />
-        <Text style={styles.muted}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card }, // ✅
+        ]}
+      >
+        <Header
+          onEdit={() => router.push("/edit-goal-weight")}
+          color={colors.accent}
+        />
+        <Text style={[styles.muted, { color: colors.textSecondary }]}>
           Set a goal weight to start tracking milestones.
         </Text>
       </View>
@@ -37,10 +47,8 @@ export default function GoalsMilestones({
   let progressDelta = 0;
 
   if (isFatLoss) {
-    // Fat loss → progress only if weight goes down
     progressDelta = Math.max(0, startWeight - currentWeight);
   } else {
-    // Muscle gain → progress only if weight goes up
     progressDelta = Math.max(0, currentWeight - startWeight);
   }
 
@@ -59,35 +67,65 @@ export default function GoalsMilestones({
   ];
 
   return (
-    <View style={styles.card}>
-      <Header onEdit={() => router.push("/edit-goal-weight")} />
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.card }, // ✅
+      ]}
+    >
+      <Header
+        onEdit={() => router.push("/edit-goal-weight")}
+        color={colors.accent}
+      />
 
       {/* CURRENT GOAL */}
-      <View style={styles.goalBox}>
-        <Text style={styles.bold}>Current Goal</Text>
+      <View
+        style={[
+          styles.goalBox,
+          { backgroundColor: colors.background }, // ✅
+        ]}
+      >
+        <Text style={[styles.bold, { color: colors.textPrimary }]}>
+          Current Goal
+        </Text>
 
-        <Text style={styles.goalText}>
+        <Text style={[styles.goalText, { color: colors.textPrimary }]}>
           Reach {formatWeight(targetWeight, unit)}
         </Text>
 
-        <Text style={styles.smallMuted}>
+        <Text
+          style={[
+            styles.smallMuted,
+            { color: colors.textSecondary },
+          ]}
+        >
           Started at {formatWeight(startWeight, unit)} • Now{" "}
           {formatWeight(currentWeight, unit)}
         </Text>
 
         {/* PROGRESS BAR */}
-        <View style={styles.progressBg}>
+        <View
+          style={[
+            styles.progressBg,
+            { backgroundColor: colors.border }, // ✅
+          ]}
+        >
           <View
             style={[
               styles.progressFill,
-              { width: `${progressPercent}%` },
+              {
+                width: `${progressPercent}%`,
+                backgroundColor: colors.accent, // ✅
+              },
             ]}
           />
         </View>
       </View>
 
       {/* MILESTONES */}
-      <Text style={styles.bold}>Milestones</Text>
+      <Text style={[styles.bold, { color: colors.textPrimary }]}>
+        Milestones
+      </Text>
 
       <View style={styles.milestoneRow}>
         {milestones.map((m) => {
@@ -98,7 +136,11 @@ export default function GoalsMilestones({
               key={m.percent}
               style={[
                 styles.milestoneCard,
-                achieved && styles.milestoneActive,
+                {
+                  backgroundColor: achieved
+                    ? colors.background
+                    : colors.border, // ✅
+                },
               ]}
             >
               <Ionicons
@@ -108,9 +150,20 @@ export default function GoalsMilestones({
                     : "ellipse-outline"
                 }
                 size={20}
-                color={achieved ? "#16A34A" : "#9CA3AF"}
+                color={
+                  achieved
+                    ? colors.accent
+                    : colors.textSecondary
+                } // ✅
               />
-              <Text style={styles.milestoneText}>{m.label}</Text>
+              <Text
+                style={[
+                  styles.milestoneText,
+                  { color: colors.textPrimary },
+                ]}
+              >
+                {m.label}
+              </Text>
             </View>
           );
         })}
@@ -120,12 +173,20 @@ export default function GoalsMilestones({
 }
 
 /* ---------- HEADER ---------- */
-function Header({ onEdit }: { onEdit: () => void }) {
+function Header({
+  onEdit,
+  color,
+}: {
+  onEdit: () => void;
+  color: string;
+}) {
   return (
     <View style={styles.header}>
       <Text style={styles.title}>Goals & Milestones</Text>
       <Pressable onPress={onEdit}>
-        <Text style={styles.edit}>Edit</Text>
+        <Text style={[styles.edit, { color }]}>
+          Edit
+        </Text>
       </Pressable>
     </View>
   );
@@ -150,7 +211,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   edit: {
-    color: "#2563EB",
     fontWeight: "600",
   },
   muted: {
@@ -162,29 +222,24 @@ const styles = StyleSheet.create({
   },
   smallMuted: {
     marginTop: 4,
-    color: "#6B7280",
     fontSize: 12,
   },
   goalBox: {
-    backgroundColor: "#F5F3FF",
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
   goalText: {
     marginTop: 6,
-    color: "#374151",
   },
   progressBg: {
     height: 6,
-    backgroundColor: "#E5E7EB",
     borderRadius: 4,
     marginTop: 12,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "#4F46E5",
     borderRadius: 4,
   },
   milestoneRow: {
@@ -193,13 +248,9 @@ const styles = StyleSheet.create({
   },
   milestoneCard: {
     width: "22%",
-    backgroundColor: "#F3F4F6",
     borderRadius: 12,
     padding: 12,
     alignItems: "center",
-  },
-  milestoneActive: {
-    backgroundColor: "#ECFDF5",
   },
   milestoneText: {
     fontSize: 11,

@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 type Props = {
   icon: any;
   label: string;
-  value: string;
+  value: string | number; // ← allow numbers safely
   subtitle?: string;
   bg: string;
   color: string;
@@ -35,8 +35,9 @@ export default function StatCard({
         {label}
       </Text>
 
+      {/* ✅ FIX: value always rendered inside Text */}
       <Text style={{ fontSize: 20, fontWeight: "700", marginTop: 2 }}>
-        {value}
+        {String(value)}
       </Text>
 
       {subtitle && (

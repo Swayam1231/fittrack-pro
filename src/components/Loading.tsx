@@ -11,13 +11,15 @@ export function Loading({ label = "Loading..." }: { label?: string }) {
       }}
     >
       <ActivityIndicator size="large" />
+
+      {/* ✅ FORCE STRING RENDER */}
       <Text
         style={{
           marginTop: 12,
           color: "#6B7280",
         }}
       >
-        {label}
+        {typeof label === "string" ? label : "Loading..."}
       </Text>
     </View>
   );

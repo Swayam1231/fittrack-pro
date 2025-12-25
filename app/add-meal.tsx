@@ -9,9 +9,11 @@ import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { auth, db } from "../src/firebase/firebase";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
+import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
 
 export default function AddMeal() {
   const router = useRouter();
+  const { colors } = useTheme(); // ✅ ADDED
 
   const { mealType, date } = useLocalSearchParams<{
     mealType?: string;
@@ -37,7 +39,6 @@ export default function AddMeal() {
 
     setSaving(true);
 
-    // ✅ USE DATE FROM NUTRITION TAB
     const mealDate = date
       ? Timestamp.fromDate(new Date(date))
       : Timestamp.now();
@@ -51,10 +52,7 @@ export default function AddMeal() {
       carbs: Number(carbs) || 0,
       fats: Number(fats) || 0,
 
-      // 🔴 REQUIRED FOR GROUPING
       mealType: mealType || "Breakfast",
-
-      // 🔴 REQUIRED FOR DATE HISTORY
       createdAt: mealDate,
     });
 
@@ -63,52 +61,104 @@ export default function AddMeal() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background }, // ✅
+      ]}
+    >
+      <Text
+        style={[
+          styles.title,
+          { color: colors.textPrimary }, // ✅
+        ]}
+      >
         Add {mealType || "Meal"}
       </Text>
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.textPrimary,
+          }, // ✅
+        ]}
         placeholder="Food name"
+        placeholderTextColor={colors.textSecondary}
         value={name}
         onChangeText={setName}
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.textPrimary,
+          }, // ✅
+        ]}
         placeholder="Quantity (e.g. 100g)"
+        placeholderTextColor={colors.textSecondary}
         value={quantity}
         onChangeText={setQuantity}
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.textPrimary,
+          }, // ✅
+        ]}
         placeholder="Calories"
+        placeholderTextColor={colors.textSecondary}
         keyboardType="numeric"
         value={calories}
         onChangeText={setCalories}
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.textPrimary,
+          }, // ✅
+        ]}
         placeholder="Protein (g)"
+        placeholderTextColor={colors.textSecondary}
         keyboardType="numeric"
         value={protein}
         onChangeText={setProtein}
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.textPrimary,
+          }, // ✅
+        ]}
         placeholder="Carbs (g)"
+        placeholderTextColor={colors.textSecondary}
         keyboardType="numeric"
         value={carbs}
         onChangeText={setCarbs}
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.textPrimary,
+          }, // ✅
+        ]}
         placeholder="Fats (g)"
+        placeholderTextColor={colors.textSecondary}
         keyboardType="numeric"
         value={fats}
         onChangeText={setFats}
@@ -119,6 +169,7 @@ export default function AddMeal() {
         disabled={saving}
         style={[
           styles.button,
+          { backgroundColor: colors.accent }, // ✅
           saving && { opacity: 0.6 },
         ]}
       >

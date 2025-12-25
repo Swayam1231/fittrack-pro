@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 /* ================= HELPERS ================= */
 
@@ -52,6 +53,7 @@ const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 export default function Nutrition() {
   const router = useRouter();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [date, setDate] = useState(new Date());
   const [meals, setMeals] = useState<any[]>([]);
@@ -72,21 +74,20 @@ export default function Nutrition() {
       const loadProfile = async () => {
         if (!uid) return;
 
-       const snap = await getDoc(doc(db, "users", uid));
-if (!snap.exists()) return;
+        const snap = await getDoc(doc(db, "users", uid));
+        if (!snap.exists()) return;
 
-const data = snap.data();
-const t = data.targets;
+        const data = snap.data();
+        const t = data.targets;
 
-if (!t) return;
+        if (!t) return;
 
-setTargets({
-  calories: t.calories ?? 0,
-  protein: t.protein ?? 0,
-  carbs: t.carbs ?? 0,
-  fats: t.fats ?? 0,
-});
-
+        setTargets({
+          calories: t.calories ?? 0,
+          protein: t.protein ?? 0,
+          carbs: t.carbs ?? 0,
+          fats: t.fats ?? 0,
+        });
       };
 
       loadProfile();
@@ -137,7 +138,7 @@ setTargets({
     setTimeout(() => setChangingDate(false), 200);
   };
 
-  /* ---------- TOTALS (MATCH HOME PAGE) ---------- */
+  /* ---------- TOTALS ---------- */
   const totals = useMemo(() => {
     return meals.reduce(
       (a, m) => {
@@ -181,24 +182,40 @@ setTargets({
     setMeals((p) => p.filter((m) => m.id !== id));
   };
 
-  if (loading) return <Loading label="Loading nutrition..." />;
+  if (loading)
+    return <Loading label="Loading nutrition..." />;
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Nutrition</Text>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]} // ✅
+    >
+      <Text style={[styles.title, { color: colors.textPrimary }]}>
+        Nutrition
+      </Text>
 
       {/* DATE */}
-      <View style={styles.dateBox}>
+      <View
+        style={[
+          styles.dateBox,
+          { borderColor: colors.border }, // ✅
+        ]}
+      >
         <Pressable onPress={() => changeDate(-1)} hitSlop={12}>
-          <Text style={styles.arrow}>‹</Text>
+          <Text style={[styles.arrow, { color: colors.textPrimary }]}>
+            ‹
+          </Text>
         </Pressable>
-        <Text style={styles.dateText}>{formatDate(date)}</Text>
+        <Text style={[styles.dateText, { color: colors.textPrimary }]}>
+          {formatDate(date)}
+        </Text>
         <Pressable onPress={() => changeDate(1)} hitSlop={12}>
-          <Text style={styles.arrow}>›</Text>
+          <Text style={[styles.arrow, { color: colors.textPrimary }]}>
+            ›
+          </Text>
         </Pressable>
       </View>
 
-      {/* ✅ MACROS (NOW MATCH HOME PAGE) */}
+      {/* MACROS */}
       <View style={styles.macroGrid}>
         <Macro title="Calories" value={totals.calories} goal={targets.calories} />
         <Macro title="Protein" value={totals.protein} goal={targets.protein} />
@@ -211,7 +228,9 @@ setTargets({
         {MEAL_TYPES.map((type) => (
           <View key={type} style={{ marginBottom: 16 }}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{type}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                {type}
+              </Text>
               <Pressable
                 onPress={() =>
                   router.push({
@@ -223,16 +242,22 @@ setTargets({
                   })
                 }
               >
-                <Text style={styles.add}>＋</Text>
+                <Text style={[styles.add, { color: colors.accent }]}>
+                  ＋
+                </Text>
               </Pressable>
             </View>
 
             {mealsByType[type].map((m) => (
               <Card key={m.id} style={{ marginBottom: 8 }}>
                 <View style={styles.row}>
-                  <Text style={{ fontWeight: "600" }}>{m.name}</Text>
+                  <Text style={{ fontWeight: "600", color: colors.textPrimary }}>
+                    {m.name}
+                  </Text>
                   <Pressable onPress={() => deleteMeal(m.id)}>
-                    <Text style={styles.delete}>🗑️</Text>
+                    <Text style={[styles.delete, { color: colors.danger }]}>
+                      🗑️
+                    </Text>
                   </Pressable>
                 </View>
               </Card>
@@ -255,16 +280,30 @@ function Macro({
   value: number;
   goal: number;
 }) {
+  const { colors } = useTheme(); // ✅ ADDED
+
   const pct = goal ? Math.min((value / goal) * 100, 100) : 0;
 
   return (
     <Card style={styles.macroCard}>
-      <Text style={styles.macroTitle}>{title}</Text>
-      <Text style={styles.macroValue}>
+      <Text style={[styles.macroTitle, { color: colors.textSecondary }]}>
+        {title}
+      </Text>
+      <Text style={[styles.macroValue, { color: colors.textPrimary }]}>
         {value}/{goal}
       </Text>
-      <View style={styles.barBg}>
-        <View style={[styles.barFill, { width: `${pct}%` }]} />
+      <View
+        style={[
+          styles.barBg,
+          { backgroundColor: colors.border }, // ✅
+        ]}
+      >
+        <View
+          style={[
+            styles.barFill,
+            { width: `${pct}%`, backgroundColor: colors.accent }, // ✅
+          ]}
+        />
       </View>
     </Card>
   );

@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from "react-native";
+import { useTheme } from "../context/ThemeContext"; // ✅ added
 
 type Props = {
   title: string;
@@ -13,6 +14,8 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: Props) {
+  const { colors } = useTheme(); // ✅ added
+
   return (
     <View
       style={{
@@ -25,6 +28,7 @@ export function EmptyState({
           fontSize: 18,
           fontWeight: "600",
           marginBottom: 6,
+          color: colors.textPrimary, // ✅
         }}
       >
         {title}
@@ -32,7 +36,7 @@ export function EmptyState({
 
       <Text
         style={{
-          color: "#6B7280",
+          color: colors.textSecondary, // ✅
           textAlign: "center",
         }}
       >
@@ -44,7 +48,7 @@ export function EmptyState({
           onPress={onAction}
           style={{
             marginTop: 12,
-            backgroundColor: "#2563EB",
+            backgroundColor: colors.accent, // ✅
             paddingVertical: 10,
             paddingHorizontal: 16,
             borderRadius: 10,

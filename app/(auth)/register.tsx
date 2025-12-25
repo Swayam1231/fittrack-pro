@@ -8,9 +8,11 @@ import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../src/firebase/firebase";
 import { useRouter } from "expo-router";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 export default function Register() {
   const router = useRouter();
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,36 +62,66 @@ export default function Register() {
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, justifyContent: "center" }}>
-      <Text style={{ fontSize: 24, fontWeight: "700", marginBottom: 16 }}>
+    <View
+      style={{
+        flex: 1,
+        padding: 16,
+        justifyContent: "center",
+        backgroundColor: colors.background, // ✅ COLOR ONLY
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: "700",
+          marginBottom: 16,
+          color: colors.textPrimary, // ✅ COLOR ONLY
+        }}
+      >
         Create Account
       </Text>
 
-      <Text>Email</Text>
+      <Text style={{ color: colors.textSecondary }}>Email</Text>
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
         placeholder="you@example.com"
+        placeholderTextColor={colors.textSecondary}
         value={email}
         onChangeText={setEmail}
+        style={{ color: colors.textPrimary }} // ✅ COLOR ONLY
       />
 
-      <Text style={{ marginTop: 12 }}>Password</Text>
+      <Text style={{ marginTop: 12, color: colors.textSecondary }}>
+        Password
+      </Text>
       <TextInput
         secureTextEntry
         placeholder="Minimum 6 characters"
+        placeholderTextColor={colors.textSecondary}
         value={password}
         onChangeText={setPassword}
+        style={{ color: colors.textPrimary }} // ✅ COLOR ONLY
       />
 
       {error && (
-        <Text style={{ color: "#DC2626", marginTop: 8 }}>
+        <Text
+          style={{
+            color: colors.danger, // ✅ COLOR ONLY
+            marginTop: 8,
+          }}
+        >
           {error}
         </Text>
       )}
 
       {success && (
-        <Text style={{ color: "#16A34A", marginTop: 8 }}>
+        <Text
+          style={{
+            color: "#16A34A", // 🔒 LEFT AS-IS (success green)
+            marginTop: 8,
+          }}
+        >
           Account created successfully. Redirecting to login…
         </Text>
       )}
@@ -98,7 +130,9 @@ export default function Register() {
         onPress={register}
         disabled={!isValid || loading}
         style={{
-          backgroundColor: isValid ? "#2563EB" : "#9CA3AF",
+          backgroundColor: isValid
+            ? colors.accent // ✅ COLOR ONLY
+            : colors.border, // ✅ COLOR ONLY
           padding: 16,
           borderRadius: 12,
           alignItems: "center",
@@ -114,7 +148,7 @@ export default function Register() {
         onPress={() => router.replace("/(auth)/login")}
         style={{ marginTop: 12, alignItems: "center" }}
       >
-        <Text style={{ color: "#2563EB" }}>
+        <Text style={{ color: colors.accent }}>
           Already have an account? Login
         </Text>
       </Pressable>

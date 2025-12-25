@@ -17,6 +17,7 @@ import {
 import { auth, db } from "../../src/firebase/firebase";
 import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 /* ---------- TYPES ---------- */
 
@@ -64,6 +65,7 @@ function calcVolume(exercises: ExerciseType[]) {
 export default function Workout() {
   const router = useRouter();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [loading, setLoading] = useState(true);
   const [todayWorkout, setTodayWorkout] = useState<WorkoutType | null>(null);
@@ -118,7 +120,10 @@ export default function Workout() {
   if (loading) return <Loading label="Loading workouts..." />;
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }} // ✅
+      edges={["top"]}
+    >
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {/* HEADER */}
         <View
@@ -128,14 +133,20 @@ export default function Workout() {
             marginBottom: 12,
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: "700" }}>
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: "700",
+              color: colors.textPrimary, // ✅
+            }}
+          >
             Workout
           </Text>
 
           <Pressable
             onPress={() => router.push("/add-workout")}
             style={{
-              backgroundColor: "#2563EB",
+              backgroundColor: colors.accent, // ✅
               paddingHorizontal: 16,
               paddingVertical: 10,
               borderRadius: 12,
@@ -148,7 +159,14 @@ export default function Workout() {
         </View>
 
         {/* TODAY */}
-        <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 8 }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "600",
+            marginBottom: 8,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Today
         </Text>
 
@@ -160,7 +178,12 @@ export default function Workout() {
                 justifyContent: "space-between",
               }}
             >
-              <Text style={{ fontWeight: "700" }}>
+              <Text
+                style={{
+                  fontWeight: "700",
+                  color: colors.textPrimary, // ✅
+                }}
+              >
                 {todayWorkout.name}
               </Text>
 
@@ -169,21 +192,33 @@ export default function Workout() {
                   router.push(`/edit-workout/${todayWorkout.id}`)
                 }
               >
-                <Text style={{ color: "#2563EB" }}>Edit</Text>
+                <Text style={{ color: colors.accent }}>
+                  Edit
+                </Text>
               </Pressable>
             </View>
 
-            <Text style={{ marginTop: 6, color: "#6B7280" }}>
+            <Text
+              style={{
+                marginTop: 6,
+                color: colors.textSecondary, // ✅
+              }}
+            >
               📦 Volume: {calcVolume(todayWorkout.exercises)} kg
             </Text>
 
-            <Text style={{ marginTop: 4 }}>
+            <Text
+              style={{
+                marginTop: 4,
+                color: colors.textPrimary, // ✅
+              }}
+            >
               🔥 Calories Burned:{" "}
               {todayWorkout.caloriesBurned ?? "—"} kcal
             </Text>
           </Card>
         ) : (
-          <Text style={{ color: "#6B7280" }}>
+          <Text style={{ color: colors.textSecondary }}>
             No workout added today
           </Text>
         )}
@@ -195,13 +230,14 @@ export default function Workout() {
             fontWeight: "600",
             marginTop: 24,
             marginBottom: 8,
+            color: colors.textPrimary, // ✅
           }}
         >
           History
         </Text>
 
         {history.length === 0 ? (
-          <Text style={{ color: "#6B7280" }}>
+          <Text style={{ color: colors.textSecondary }}>
             No past workouts yet
           </Text>
         ) : (
@@ -213,7 +249,14 @@ export default function Workout() {
                   justifyContent: "space-between",
                 }}
               >
-                <Text style={{ fontWeight: "600" }}>{w.name}</Text>
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    color: colors.textPrimary, // ✅
+                  }}
+                >
+                  {w.name}
+                </Text>
 
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <Pressable
@@ -221,22 +264,36 @@ export default function Workout() {
                       router.push(`/edit-workout/${w.id}`)
                     }
                   >
-                    <Text style={{ color: "#2563EB" }}>Edit</Text>
+                    <Text style={{ color: colors.accent }}>
+                      Edit
+                    </Text>
                   </Pressable>
 
                   <Pressable onPress={() => deleteWorkout(w.id)}>
-                    <Text style={{ color: "#EF4444" }}>🗑</Text>
+                    <Text style={{ color: colors.danger }}>
+                      🗑
+                    </Text>
                   </Pressable>
                 </View>
               </View>
 
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary, // ✅
+                }}
+              >
                 {w.createdAt
                   ? w.createdAt.toDate().toDateString()
                   : "—"}
               </Text>
 
-              <Text style={{ fontSize: 12 }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textPrimary, // ✅
+                }}
+              >
                 🔥 {w.caloriesBurned ?? "—"} kcal
               </Text>
             </Card>

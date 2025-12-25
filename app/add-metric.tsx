@@ -11,10 +11,12 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { Card } from "../src/components/Card";
+import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
 
 export default function AddMetric() {
   const router = useRouter();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
@@ -54,29 +56,44 @@ export default function AddMetric() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 12,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Add Weight Entry
         </Text>
 
         <Card>
-          <Text>Weight (kg)</Text>
+          <Text style={{ color: colors.textPrimary }}>
+            Weight (kg)
+          </Text>
           <TextInput
             keyboardType="numeric"
             placeholder="e.g. 72.5"
+            placeholderTextColor={colors.textSecondary}
             value={weight}
             onChangeText={setWeight}
+            style={{ color: colors.textPrimary }} // ✅
           />
 
-          <Text style={{ marginTop: 12 }}>
+          <Text
+            style={{ marginTop: 12, color: colors.textPrimary }}
+          >
             Body Fat % (optional)
           </Text>
           <TextInput
             keyboardType="numeric"
             placeholder="e.g. 18"
+            placeholderTextColor={colors.textSecondary}
             value={bodyFat}
             onChangeText={setBodyFat}
+            style={{ color: colors.textPrimary }} // ✅
           />
         </Card>
       </ScrollView>
@@ -88,16 +105,18 @@ export default function AddMetric() {
           left: 0,
           right: 0,
           padding: 16,
-          backgroundColor: "#fff",
+          backgroundColor: colors.card, // ✅
           borderTopWidth: 1,
-          borderColor: "#E5E7EB",
+          borderColor: colors.border, // ✅
         }}
       >
         <Pressable
           onPress={saveMetric}
           disabled={!isValid}
           style={{
-            backgroundColor: isValid ? "#2563EB" : "#9CA3AF",
+            backgroundColor: isValid
+              ? colors.accent
+              : colors.border, // ✅ (no muted token)
             padding: 16,
             borderRadius: 12,
             alignItems: "center",

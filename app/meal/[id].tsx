@@ -9,11 +9,13 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 export default function EditMeal() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
@@ -74,42 +76,70 @@ export default function EditMeal() {
 
   /* ------------------ UI ------------------ */
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140 }}>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 12,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Edit Meal
         </Text>
 
         <Card>
-          <Text>Meal Name</Text>
-          <TextInput value={name} onChangeText={setName} />
+          <Text style={{ color: colors.textPrimary }}>Meal Name</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            style={{ color: colors.textPrimary }} // ✅
+            placeholderTextColor={colors.textSecondary}
+          />
 
-          <Text style={{ marginTop: 12 }}>Calories (kcal)</Text>
+          <Text style={{ marginTop: 12, color: colors.textPrimary }}>
+            Calories (kcal)
+          </Text>
           <TextInput
             keyboardType="numeric"
             value={calories}
             onChangeText={setCalories}
+            style={{ color: colors.textPrimary }} // ✅
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={{ marginTop: 12 }}>Protein (g)</Text>
+          <Text style={{ marginTop: 12, color: colors.textPrimary }}>
+            Protein (g)
+          </Text>
           <TextInput
             keyboardType="numeric"
             value={protein}
             onChangeText={setProtein}
+            style={{ color: colors.textPrimary }} // ✅
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={{ marginTop: 12 }}>Carbs (g)</Text>
+          <Text style={{ marginTop: 12, color: colors.textPrimary }}>
+            Carbs (g)
+          </Text>
           <TextInput
             keyboardType="numeric"
             value={carbs}
             onChangeText={setCarbs}
+            style={{ color: colors.textPrimary }} // ✅
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={{ marginTop: 12 }}>Fats (g)</Text>
+          <Text style={{ marginTop: 12, color: colors.textPrimary }}>
+            Fats (g)
+          </Text>
           <TextInput
             keyboardType="numeric"
             value={fats}
             onChangeText={setFats}
+            style={{ color: colors.textPrimary }} // ✅
+            placeholderTextColor={colors.textSecondary}
           />
         </Card>
       </ScrollView>
@@ -122,16 +152,16 @@ export default function EditMeal() {
           left: 0,
           right: 0,
           padding: 16,
-          backgroundColor: "#fff",
+          backgroundColor: colors.card, // ✅
           borderTopWidth: 1,
-          borderColor: "#E5E7EB",
+          borderColor: colors.border, // ✅
         }}
       >
         <Pressable
           onPress={saveChanges}
           disabled={!isValid}
           style={{
-            backgroundColor: isValid ? "#2563EB" : "#9CA3AF",
+            backgroundColor: isValid ? colors.accent : colors.border, // ✅
             padding: 16,
             borderRadius: 12,
             alignItems: "center",
@@ -146,7 +176,7 @@ export default function EditMeal() {
         <Pressable
           onPress={deleteMeal}
           style={{
-            backgroundColor: "#DC2626",
+            backgroundColor: colors.danger, // ✅
             padding: 16,
             borderRadius: 12,
             alignItems: "center",

@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { ExerciseCatalogItem } from "../hooks/useExerciseCatalog";
+import { useTheme } from "../context/ThemeContext"; // ✅ added
 
 /* ===================== TYPES ===================== */
 
@@ -30,17 +31,30 @@ type Props = {
 /* ===================== COMPONENT ===================== */
 
 export function ExercisePickerModal(props: Props) {
+  const { colors } = useTheme(); // ✅ added
+
   return (
     <Modal visible={props.visible} animationType="slide">
       <View style={{ flex: 1 }}>
         <View style={{ padding: 16 }}>
-          <Text style={styles.modalTitle}>Select Exercise</Text>
+          <Text
+            style={[
+              styles.modalTitle,
+              { color: colors.textPrimary }, // ✅
+            ]}
+          >
+            Select Exercise
+          </Text>
 
           <TextInput
             placeholder="Search exercise"
             value={props.search}
             onChangeText={props.setSearch}
-            style={styles.searchInput}
+            style={[
+              styles.searchInput,
+              { backgroundColor: colors.background, color: colors.textPrimary }, // ✅
+            ]}
+            placeholderTextColor={colors.textSecondary} // ✅
           />
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -54,10 +68,15 @@ export function ExercisePickerModal(props: Props) {
                 }
                 style={[
                   styles.chip,
-                  props.muscleFilter === m && styles.chipActive,
+                  { backgroundColor: colors.border }, // ✅
+                  props.muscleFilter === m && {
+                    backgroundColor: colors.accent, // ✅
+                  },
                 ]}
               >
-                <Text>{m}</Text>
+                <Text style={{ color: colors.textPrimary }}>
+                  {m}
+                </Text>
               </Pressable>
             ))}
 
@@ -71,10 +90,15 @@ export function ExercisePickerModal(props: Props) {
                 }
                 style={[
                   styles.chip,
-                  props.equipmentFilter === e && styles.chipActive,
+                  { backgroundColor: colors.border }, // ✅
+                  props.equipmentFilter === e && {
+                    backgroundColor: colors.accent, // ✅
+                  },
                 ]}
               >
-                <Text>{e}</Text>
+                <Text style={{ color: colors.textPrimary }}>
+                  {e}
+                </Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -85,11 +109,21 @@ export function ExercisePickerModal(props: Props) {
           keyExtractor={(i) => i.id}
           renderItem={({ item }) => (
             <Pressable
-              style={styles.exerciseItem}
+              style={[
+                styles.exerciseItem,
+                { borderBottomColor: colors.border }, // ✅
+              ]}
               onPress={() => props.onSelect(item.name)}
             >
-              <Text>{item.name}</Text>
-              <Text style={styles.exerciseMeta}>
+              <Text style={{ color: colors.textPrimary }}>
+                {item.name}
+              </Text>
+              <Text
+                style={[
+                  styles.exerciseMeta,
+                  { color: colors.textSecondary }, // ✅
+                ]}
+              >
                 {item.target} · {item.equipment}
               </Text>
             </Pressable>
@@ -97,8 +131,21 @@ export function ExercisePickerModal(props: Props) {
         />
 
         <View style={{ padding: 16 }}>
-          <Pressable onPress={props.onClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>Close</Text>
+          <Pressable
+            onPress={props.onClose}
+            style={[
+              styles.closeButton,
+              { backgroundColor: colors.border }, // ✅
+            ]}
+          >
+            <Text
+              style={[
+                styles.closeText,
+                { color: colors.textPrimary }, // ✅
+              ]}
+            >
+              Close
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -117,33 +164,25 @@ const styles = StyleSheet.create({
   searchInput: {
     padding: 12,
     borderRadius: 10,
-    backgroundColor: "#F3F4F6",
     marginBottom: 12,
   },
   chip: {
     height: 36,
     paddingHorizontal: 14,
     justifyContent: "center",
-    backgroundColor: "#E5E7EB",
     borderRadius: 18,
     marginRight: 8,
-  },
-  chipActive: {
-    backgroundColor: "#93C5FD",
   },
   exerciseItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
   },
   exerciseMeta: {
     fontSize: 12,
-    color: "#6B7280",
   },
   closeButton: {
     padding: 14,
-    backgroundColor: "#E5E7EB",
     borderRadius: 12,
     alignItems: "center",
   },

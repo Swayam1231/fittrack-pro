@@ -4,11 +4,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { auth, db } from "../../src/firebase/firebase";
 import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 export default function WorkoutDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
   const [workout, setWorkout] = useState<any>(null);
 
   useEffect(() => {
@@ -45,31 +47,56 @@ export default function WorkoutDetails() {
 
   if (!workout) {
     return (
-      <View style={{ padding: 16 }}>
-        <Text>Loading...</Text>
+      <View style={{ padding: 16, backgroundColor: colors.background }}>
+        <Text style={{ color: colors.textPrimary }}>
+          Loading...
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={{ padding: 16 }}>
-      <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>
+    <ScrollView
+      style={{ padding: 16, backgroundColor: colors.background }} // ✅
+    >
+      <Text
+        style={{
+          fontSize: 22,
+          fontWeight: "700",
+          marginBottom: 12,
+          color: colors.textPrimary, // ✅
+        }}
+      >
         {workout.name}
       </Text>
 
       <Card>
-        <Text style={{ fontWeight: "600" }}>
+        <Text
+          style={{
+            fontWeight: "600",
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Total Volume: {workout.totalVolume} kg
         </Text>
       </Card>
 
       {workout.exercises.map((e: any, i: number) => (
         <Card key={i}>
-          <Text style={{ fontWeight: "600" }}>{e.name}</Text>
-          <Text>
+          <Text
+            style={{
+              fontWeight: "600",
+              color: colors.textPrimary, // ✅
+            }}
+          >
+            {e.name}
+          </Text>
+          <Text style={{ color: colors.textSecondary }}>
             {e.sets} x {e.reps} @ {e.weight} kg
           </Text>
-          <Text>Volume: {e.volume} kg</Text>
+          <Text style={{ color: colors.textSecondary }}>
+            Volume: {e.volume} kg
+          </Text>
         </Card>
       ))}
 
@@ -81,7 +108,7 @@ export default function WorkoutDetails() {
           })
         }
         style={{
-          backgroundColor: "#2563EB",
+          backgroundColor: colors.accent, // ✅
           padding: 16,
           borderRadius: 12,
           alignItems: "center",
@@ -96,7 +123,7 @@ export default function WorkoutDetails() {
       <Pressable
         onPress={deleteWorkout}
         style={{
-          backgroundColor: "#DC2626",
+          backgroundColor: colors.danger, // ✅
           padding: 16,
           borderRadius: 12,
           alignItems: "center",

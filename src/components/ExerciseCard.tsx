@@ -1,6 +1,7 @@
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Card } from "./Card";
 import { StyleSheet } from "react-native";
+import { useTheme } from "../context/ThemeContext"; // ✅ added
 
 type SetEntry = { reps: string; weight: string };
 type Exercise = { name: string; sets: SetEntry[] };
@@ -24,15 +25,29 @@ export function ExerciseCard({
     value: string
   ) => void;
 }) {
+  const { colors } = useTheme(); // ✅ added
+
   return (
     <Card style={{ marginTop: 12 }}>
       <View style={styles.exerciseHeader}>
-        <Text style={styles.exerciseTitle}>
+        <Text
+          style={[
+            styles.exerciseTitle,
+            { color: colors.textPrimary }, // ✅
+          ]}
+        >
           {exercise.name || "Select exercise"}
         </Text>
 
         <Pressable onPress={onDeleteExercise}>
-          <Text style={styles.deleteText}>Delete</Text>
+          <Text
+            style={[
+              styles.deleteText,
+              { color: colors.danger }, // ✅
+            ]}
+          >
+            Delete
+          </Text>
         </Pressable>
       </View>
 
@@ -43,7 +58,14 @@ export function ExerciseCard({
             keyboardType="numeric"
             value={set.reps}
             onChangeText={(v) => onUpdateSet(sIdx, "reps", v)}
-            style={styles.setInput}
+            style={[
+              styles.setInput,
+              {
+                backgroundColor: colors.background, // ✅
+                color: colors.textPrimary, // ✅
+              },
+            ]}
+            placeholderTextColor={colors.textSecondary} // ✅
           />
 
           <TextInput
@@ -51,17 +73,38 @@ export function ExerciseCard({
             keyboardType="numeric"
             value={set.weight}
             onChangeText={(v) => onUpdateSet(sIdx, "weight", v)}
-            style={styles.setInput}
+            style={[
+              styles.setInput,
+              {
+                backgroundColor: colors.background, // ✅
+                color: colors.textPrimary, // ✅
+              },
+            ]}
+            placeholderTextColor={colors.textSecondary} // ✅
           />
 
           <Pressable onPress={() => onDeleteSet(sIdx)}>
-            <Text style={styles.deleteSet}>✕</Text>
+            <Text
+              style={[
+                styles.deleteSet,
+                { color: colors.danger }, // ✅
+              ]}
+            >
+              ✕
+            </Text>
           </Pressable>
         </View>
       ))}
 
       <Pressable onPress={onAddSet}>
-        <Text style={{ color: "#2563EB", marginTop: 6 }}>+ Add Set</Text>
+        <Text
+          style={{
+            color: colors.accent, // ✅
+            marginTop: 6,
+          }}
+        >
+          + Add Set
+        </Text>
       </Pressable>
     </Card>
   );
@@ -79,7 +122,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   deleteText: {
-    color: "#DC2626",
     fontWeight: "600",
   },
   setRow: {
@@ -91,11 +133,9 @@ const styles = StyleSheet.create({
   setInput: {
     flex: 1,
     padding: 10,
-    backgroundColor: "#F3F4F6",
     borderRadius: 8,
   },
   deleteSet: {
-    color: "#DC2626",
     fontSize: 18,
     paddingHorizontal: 6,
   },

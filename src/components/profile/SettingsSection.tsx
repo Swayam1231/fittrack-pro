@@ -13,6 +13,8 @@ type RowProps = {
 };
 
 function Row({ icon, label, value, danger, onPress }: RowProps) {
+  const { colors } = useTheme();
+
   return (
     <Pressable
       onPress={onPress}
@@ -25,7 +27,7 @@ function Row({ icon, label, value, danger, onPress }: RowProps) {
       <Ionicons
         name={icon}
         size={18}
-        color={danger ? "#DC2626" : "#374151"}
+        color={danger ? colors.danger : colors.textSecondary}
         style={{ width: 28 }}
       />
 
@@ -33,20 +35,29 @@ function Row({ icon, label, value, danger, onPress }: RowProps) {
         style={{
           flex: 1,
           fontWeight: "500",
-          color: danger ? "#DC2626" : "#111827",
+          color: danger ? colors.danger : colors.textPrimary,
         }}
       >
         {label}
       </Text>
 
       {value && (
-        <Text style={{ color: "#6B7280", marginRight: 6 }}>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            marginRight: 6,
+          }}
+        >
           {value}
         </Text>
       )}
 
       {!danger && (
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={colors.border}
+        />
       )}
     </Pressable>
   );
@@ -54,7 +65,7 @@ function Row({ icon, label, value, danger, onPress }: RowProps) {
 
 /* ---------- MAIN SETTINGS ---------- */
 export default function SettingsSection() {
-  const { mode, setMode } = useTheme();
+  const { mode, setMode, colors } = useTheme();
 
   /* ---- THEME CYCLER ---- */
   const nextTheme =
@@ -86,17 +97,24 @@ export default function SettingsSection() {
   return (
     <View
       style={{
-        backgroundColor: "#fff",
+        backgroundColor: colors.card,
         borderRadius: 16,
         padding: 16,
         marginBottom: 32,
       }}
     >
-      <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 8 }}>
+      <Text
+        style={{
+          fontSize: 16,
+          fontWeight: "700",
+          marginBottom: 8,
+          color: colors.textPrimary,
+        }}
+      >
         Settings
       </Text>
 
-      {/* THEME (WORKING) */}
+      {/* THEME */}
       <Row
         icon="color-palette-outline"
         label="Theme"
@@ -104,14 +122,14 @@ export default function SettingsSection() {
         onPress={() => setMode(nextTheme)}
       />
 
-      {/* EXPORT (RESTORED) */}
+      {/* EXPORT */}
       <Row
         icon="download-outline"
         label="Export Data"
         onPress={handleExport}
       />
 
-      {/* LOGOUT (RESTORED) */}
+      {/* LOGOUT */}
       <Row
         icon="log-out-outline"
         label="Logout"

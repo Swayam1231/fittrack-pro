@@ -8,6 +8,7 @@ import {
 import { useState, useEffect } from "react";
 import { auth, db } from "../../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useTheme } from "../../context/ThemeContext"; // ✅ ADDED
 
 type TrainingType = "Gym" | "Home" | "Mixed";
 
@@ -29,6 +30,7 @@ export default function EditTrainingPreferencesModal({
   onClose,
 }: Props) {
   const uid = auth.currentUser?.uid;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [prefs, setPrefs] = useState<TrainingPrefs>({
     trainingType: "Gym",
@@ -81,11 +83,18 @@ export default function EditTrainingPreferencesModal({
       style={{
         padding: 12,
         borderRadius: 12,
-        backgroundColor: selected ? "#EEF2FF" : "#F9FAFB",
+        backgroundColor: selected
+          ? colors.card    // ✅ (was #EEF2FF)
+          : colors.background, // ✅ (was #F9FAFB)
         marginBottom: 8,
       }}
     >
-      <Text style={{ fontWeight: selected ? "600" : "400" }}>
+      <Text
+        style={{
+          fontWeight: selected ? "600" : "400",
+          color: colors.textPrimary, // ✅
+        }}
+      >
         {label}
       </Text>
     </Pressable>
@@ -93,12 +102,30 @@ export default function EditTrainingPreferencesModal({
 
   return (
     <Modal visible={visible} animationType="slide">
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 16 }}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          backgroundColor: colors.background, // ✅
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            marginBottom: 16,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Training Preferences
         </Text>
 
-        <Text style={{ fontWeight: "600", marginBottom: 8 }}>
+        <Text
+          style={{
+            fontWeight: "600",
+            marginBottom: 8,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Training Type
         </Text>
         {["Gym", "Home", "Mixed"].map((t) => (
@@ -110,7 +137,14 @@ export default function EditTrainingPreferencesModal({
           />
         ))}
 
-        <Text style={{ fontWeight: "600", marginTop: 16, marginBottom: 8 }}>
+        <Text
+          style={{
+            fontWeight: "600",
+            marginTop: 16,
+            marginBottom: 8,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Workout Frequency
         </Text>
         {[3, 4, 5, 6].map((d) => (
@@ -122,7 +156,14 @@ export default function EditTrainingPreferencesModal({
           />
         ))}
 
-        <Text style={{ fontWeight: "600", marginTop: 16, marginBottom: 8 }}>
+        <Text
+          style={{
+            fontWeight: "600",
+            marginTop: 16,
+            marginBottom: 8,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Preferred Split
         </Text>
         {["Push / Pull / Legs", "Upper / Lower", "Full Body"].map((s) => (
@@ -134,7 +175,14 @@ export default function EditTrainingPreferencesModal({
           />
         ))}
 
-        <Text style={{ fontWeight: "600", marginTop: 16, marginBottom: 8 }}>
+        <Text
+          style={{
+            fontWeight: "600",
+            marginTop: 16,
+            marginBottom: 8,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Equipment
         </Text>
         {["Full gym access", "Limited equipment", "Bodyweight only"].map((e) => (
@@ -146,7 +194,14 @@ export default function EditTrainingPreferencesModal({
           />
         ))}
 
-        <Text style={{ fontWeight: "600", marginTop: 16, marginBottom: 8 }}>
+        <Text
+          style={{
+            fontWeight: "600",
+            marginTop: 16,
+            marginBottom: 8,
+            color: colors.textPrimary, // ✅
+          }}
+        >
           Cardio Preference
         </Text>
         {["Low", "Moderate", "High"].map((c) => (
@@ -161,7 +216,7 @@ export default function EditTrainingPreferencesModal({
         <Pressable
           onPress={savePrefs}
           style={{
-            backgroundColor: "#2563EB",
+            backgroundColor: colors.accent, // ✅
             padding: 16,
             borderRadius: 12,
             alignItems: "center",
@@ -174,7 +229,12 @@ export default function EditTrainingPreferencesModal({
         </Pressable>
 
         <Pressable onPress={onClose} style={{ marginTop: 12 }}>
-          <Text style={{ textAlign: "center", color: "#6B7280" }}>
+          <Text
+            style={{
+              textAlign: "center",
+              color: colors.textSecondary, // ✅
+            }}
+          >
             Cancel
           </Text>
         </Pressable>

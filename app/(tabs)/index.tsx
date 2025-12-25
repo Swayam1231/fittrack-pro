@@ -8,6 +8,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { auth, db } from "../../src/firebase/firebase";
+import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
 
 import {
   collection,
@@ -41,6 +42,7 @@ function formatDate(date: Date) {
 export default function Home() {
   const router = useRouter();
   const user = auth.currentUser;
+  const { colors } = useTheme(); // ✅ ADDED
 
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState<any>(null);
@@ -140,15 +142,20 @@ export default function Home() {
   if (loading || !targets) {
     return (
       <SafeAreaView
-        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background, // ✅ COLOR ONLY
+        }}
       >
-        <Text>Loading…</Text>
+        <Text style={{ color: colors.textPrimary }}>Loading…</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -162,7 +169,13 @@ export default function Home() {
             marginBottom: 16,
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: "700" }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "700",
+              color: colors.textPrimary, // ✅
+            }}
+          >
             FitTrack
           </Text>
 
@@ -172,12 +185,12 @@ export default function Home() {
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                backgroundColor: "#E5E7EB",
+                backgroundColor: colors.border, // ✅
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontWeight: "700" }}>
+              <Text style={{ fontWeight: "700", color: colors.textPrimary }}>
                 {user?.email?.[0]?.toUpperCase() ?? "U"}
               </Text>
             </View>
@@ -185,7 +198,7 @@ export default function Home() {
         </View>
 
         {/* ---------- DAILY SUMMARY ---------- */}
-        <Card style={{ backgroundColor: "#2563EB", marginBottom: 16 }}>
+        <Card style={{ backgroundColor: colors.accent, marginBottom: 16 }}>
           <Text style={{ color: "#E0E7FF", fontSize: 14 }}>
             Daily Summary
           </Text>
@@ -237,20 +250,20 @@ export default function Home() {
 
         {/* ---------- STATS GRID ---------- */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-          {/* <StatCard title="Consumed" value={consumedCalories} unit="cal" /> */}
           <StatCard title="Burned" value={burnedCalories} unit="cal" />
           <StatCard title="Workouts" value={workouts.length} unit="done" />
-          {/* <StatCard
-            title="Protein"
-            value={`${consumedProtein}g`}
-            sub={`of ${targetProtein}g`}
-            highlight
-          /> */}
         </View>
 
         {/* ---------- MACRO GOALS ---------- */}
         <Card>
-          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              marginBottom: 12,
+              color: colors.textPrimary, // ✅
+            }}
+          >
             Macro Goals
           </Text>
 
@@ -260,22 +273,21 @@ export default function Home() {
             target={targetProtein}
             color="#DC2626"
           />
-
-          {/* <MacroRow
-            label="Calories"
-            value={consumedCalories}
-            target={targetCalories}
-            color="#2563EB"
-          /> */}
         </Card>
 
         {/* ---------- DAILY TIP ---------- */}
         <Card style={{ backgroundColor: "#EFF6FF" }}>
-          <Text style={{ fontWeight: "600", marginBottom: 4 }}>
+          <Text
+            style={{
+              fontWeight: "600",
+              marginBottom: 4,
+              color: colors.textPrimary, // ✅
+            }}
+          >
             💡 Daily Tip
           </Text>
-          <Text style={{ color: "#374151" }}>
-            You're doing great! Make sure to eat enough to fuel your workouts.
+          <Text style={{ color: colors.textSecondary }}>
+            You are doing great! Make sure to eat enough to fuel your workouts.
           </Text>
         </Card>
       </ScrollView>
@@ -298,19 +310,23 @@ function StatCard({
   sub?: string;
   highlight?: boolean;
 }) {
+  const { colors } = useTheme(); // ✅ ADDED (NO STRUCTURE CHANGE)
+
   return (
     <Card style={{ width: "48%" }}>
-      <Text style={{ fontSize: 12, color: "#6B7280" }}>{title}</Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+        {title}
+      </Text>
       <Text
         style={{
           fontSize: 22,
           fontWeight: "700",
-          color: highlight ? "#DC2626" : "#111827",
+          color: highlight ? colors.danger : colors.textPrimary,
         }}
       >
         {value}
       </Text>
-      <Text style={{ fontSize: 12, color: "#6B7280" }}>
+      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
         {sub ?? unit}
       </Text>
     </Card>
@@ -328,18 +344,20 @@ function MacroRow({
   target: number;
   color: string;
 }) {
+  const { colors } = useTheme(); // ✅ ADDED
+
   const percent =
     target > 0 ? Math.min((value / target) * 100, 100) : 0;
 
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text style={{ marginBottom: 4 }}>
+      <Text style={{ marginBottom: 4, color: colors.textPrimary }}>
         {label} {value}/{target}
       </Text>
       <View
         style={{
           height: 6,
-          backgroundColor: "#E5E7EB",
+          backgroundColor: colors.border, // ✅
           borderRadius: 6,
           overflow: "hidden",
         }}
