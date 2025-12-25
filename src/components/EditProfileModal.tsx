@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-/* ---- CALCULATION ENGINE (EXISTING FILE) ---- */
+/* ---- CALCULATION ENGINE ---- */
 import { calculateTargets } from "../utils/calculateTargets";
 
 /* ---- TYPES ---- */
@@ -19,7 +19,7 @@ type Gender = "Male" | "Female";
 type FitnessLevel = "Beginner" | "Intermediate" | "Advanced";
 type PrimaryGoal = "Fat Loss" | "Maintenance" | "Muscle Gain";
 
-/* ---- MAPPERS (APP → ENGINE) ---- */
+/* ---- MAPPERS ---- */
 function mapGender(g: Gender) {
   return g === "Male" ? "male" : "female";
 }
@@ -54,9 +54,8 @@ export default function EditProfileModal({
   onClose: () => void;
 }) {
   const uid = auth.currentUser?.uid;
-  if (!uid) return null;
 
-  /* ---- STATE ---- */
+  /* ---- STATE (HOOKS MUST ALWAYS RUN) ---- */
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("Male");
   const [age, setAge] = useState("");
@@ -70,7 +69,7 @@ export default function EditProfileModal({
 
   /* ---- LOAD PROFILE ---- */
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !uid) return;
 
     (async () => {
       const snap = await getDoc(doc(db, "users", uid));
@@ -86,7 +85,10 @@ export default function EditProfileModal({
       setFitnessLevel(d.fitnessLevel ?? "Intermediate");
       setPrimaryGoal(d.primaryGoal ?? "Fat Loss");
     })();
-  }, [visible]);
+  }, [visible, uid]);
+
+  /* ---- EARLY RETURN AFTER HOOKS ---- */
+  if (!uid) return null;
 
   /* ---- SAVE + RECALCULATE ---- */
   const saveProfile = async () => {
@@ -104,9 +106,7 @@ export default function EditProfileModal({
       Alert.alert("Invalid Body Fat %", "Enter a value between 5–50%");
       return;
     }
-    
 
-    /* ---- CALL EXISTING ENGINE ---- */
     const targets = calculateTargets({
       gender: mapGender(gender),
       age: ageNum,
@@ -126,7 +126,6 @@ export default function EditProfileModal({
       bodyFat: bfNum ?? null,
       fitnessLevel,
       primaryGoal,
-
       targets: {
         calories: targets.calories,
         protein: targets.protein,
@@ -136,10 +135,9 @@ export default function EditProfileModal({
     });
 
     onClose();
-    
   };
 
-  /* ---- UI ---- */
+  /* ---- UI (UNCHANGED) ---- */
   return (
     <Modal visible={visible} animationType="slide">
       <ScrollView contentContainerStyle={{ padding: 16 }}>
@@ -220,7 +218,7 @@ export default function EditProfileModal({
   );
 }
 
-/* ---- REUSABLE SEGMENT ---- */
+/* ---- SEGMENT COMPONENT ---- */
 function Segment({
   title,
   options,
@@ -260,7 +258,6 @@ function Segment({
       </View>
     </>
   );
-  
 }
 
 /* ---- STYLES ---- */

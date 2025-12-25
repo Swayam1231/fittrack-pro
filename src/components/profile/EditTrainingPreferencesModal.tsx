@@ -29,7 +29,6 @@ export default function EditTrainingPreferencesModal({
   onClose,
 }: Props) {
   const uid = auth.currentUser?.uid;
-  if (!uid) return null;
 
   const [prefs, setPrefs] = useState<TrainingPrefs>({
     trainingType: "Gym",
@@ -41,7 +40,7 @@ export default function EditTrainingPreferencesModal({
 
   /* ---------- LOAD EXISTING PREFS ---------- */
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !uid) return;
 
     (async () => {
       const snap = await getDoc(doc(db, "users", uid));
@@ -52,7 +51,10 @@ export default function EditTrainingPreferencesModal({
         setPrefs(data.preferences.training);
       }
     })();
-  }, [visible]);
+  }, [visible, uid]);
+
+  /* ---------- GUARD AFTER HOOKS ---------- */
+  if (!uid) return null;
 
   const setField = (key: keyof TrainingPrefs, value: any) => {
     setPrefs((prev) => ({ ...prev, [key]: value }));
