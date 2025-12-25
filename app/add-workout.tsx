@@ -6,78 +6,120 @@ import {
   Pressable,
   StyleSheet,
   Alert,
-  Modal,
-  FlatList,
 } from "react-native";
 import { useState, useEffect, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { auth, db } from "../src/firebase/firebase";
-import { addDoc, collection, Timestamp, doc, getDoc } from "firebase/firestore";
-import { Card } from "../src/components/Card";
 import {
-  useExerciseCatalog,
-  ExerciseCatalogItem,
-} from "../src/hooks/useExerciseCatalog";
+  addDoc,
+  collection,
+  Timestamp,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { Card } from "../src/components/Card";
+import { useExerciseCatalog } from "../src/hooks/useExerciseCatalog";
+import { ExerciseCard } from "../src/components/ExerciseCard";
+import { ExercisePickerModal } from "../src/components/ExercisePickerModal";
 
-/* ------------------ TYPES ------------------ */
+/* ===================== TYPES ===================== */
 
-type SetEntry = {
-  reps: string;
-  weight: string;
+type SetEntry = { reps: string; weight: string };
+type Exercise = { name: string; sets: SetEntry[] };
+
+type LastSetMap = {
+  [exerciseName: string]: { reps: number; weight: number };
 };
 
-type Exercise = {
-  name: string;
-  sets: SetEntry[];
-};
+/* ===================== CONSTANTS ===================== */
 
-type RecentExercise = {
-  name: string;
-  count: number;
-};
-
-type ScoredExercise = ExerciseCatalogItem & {
-  score: number;
-};
-
-/* ------------------ CONSTANTS ------------------ */
-
-const MET = 6;
+// Tier-1
+const BASE_MET = 6;
 const VOLUME_FACTOR = 0.035;
-const RECENT_KEY = "recent_exercises";
 
-/* ------------------ HELPERS ------------------ */
+// Tier-2 (physics)
+const MUSCLE_EFFICIENCY = 0.25;
+const JOULES_PER_KCAL = 4184;
 
-const normalize = (text: string) =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+// Tier-2.5 (MET per exercise)
+const MET_MIN = 3.5;
+const MET_MAX = 9.0;
 
-/* ------------------ COMPONENT ------------------ */
+// ROM
+const ROM_MIN = 0.25;
+const ROM_MAX = 0.85;
+
+const LAST_SET_KEY = "exercise_last_sets";
+
+/* ===================== HELPERS ===================== */
+
+const normalize = (t: string) =>
+  t.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+
+/* -------- MET helpers -------- */
+
+const baseMetByTarget = (target?: string) => {
+  if (!target) return 5.5;
+  if (["legs", "back", "chest"].includes(target)) return 6.5;
+  if (["shoulders", "glutes"].includes(target)) return 6.0;
+  return 5.0; // arms / core
+};
+
+const equipmentMetModifier = (equipment?: string) => {
+  if (!equipment) return 0;
+  if (equipment.includes("barbell")) return 0.5;
+  if (equipment.includes("body")) return -0.5;
+  return 0;
+};
+
+/* -------- ROM helpers -------- */
+
+const baseROMByTarget = (target?: string) => {
+  if (!target) return 0.5;
+  if (["legs", "glutes"].includes(target)) return 0.7;
+  if (["back"].includes(target)) return 0.6;
+  if (["chest", "shoulders"].includes(target)) return 0.5;
+  if (["arms"].includes(target)) return 0.3;
+  if (["core"].includes(target)) return 0.25;
+  return 0.5;
+};
+
+const equipmentROMModifier = (equipment?: string) => {
+  if (!equipment) return 0;
+  if (equipment.includes("barbell")) return 0.05;
+  if (equipment.includes("dumbbell")) return 0.03;
+  if (equipment.includes("body")) return 0.08;
+  if (equipment.includes("machine")) return -0.05;
+  return 0;
+};
+
+const clamp = (v: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, v));
+
+/* ===================== SCREEN ===================== */
 
 export default function AddWorkout() {
   const router = useRouter();
   const user = auth.currentUser;
-
   const { exercises: catalog } = useExerciseCatalog();
 
-  const [workoutName, setWorkoutName] = useState("");
-  const [duration, setDuration] = useState("");
-  const [userWeight, setUserWeight] = useState(0);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [saving, setSaving] = useState(false);
+  /* ---------- STATE ---------- */
 
+  const [workoutName, setWorkoutName] = useState("");
+  const [duration, setDuration] = useState(""); // minutes
+  const [userWeight, setUserWeight] = useState(0);
+
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [search, setSearch] = useState("");
 
-  const [recent, setRecent] = useState<RecentExercise[]>([]);
+  const [lastSets, setLastSets] = useState<LastSetMap>({});
+
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null);
   const [equipmentFilter, setEquipmentFilter] = useState<string | null>(null);
 
-  /* ------------------ LOAD USER + RECENT ------------------ */
+  /* ---------- LOAD DATA (NO EARLY RETURN) ---------- */
 
   useEffect(() => {
     if (!user) return;
@@ -88,185 +130,169 @@ export default function AddWorkout() {
       }
     });
 
-    AsyncStorage.getItem(RECENT_KEY).then((data) => {
-      if (data) setRecent(JSON.parse(data));
+    AsyncStorage.getItem(LAST_SET_KEY).then((d) => {
+      if (d) setLastSets(JSON.parse(d));
     });
   }, [user]);
 
-  if (!user) return null;
+  /* ===================== CALORIE ENGINE ===================== */
 
-  /* ------------------ RECENT BOOST ------------------ */
+  const caloriesBurned = useMemo(() => {
+    if (!user || !duration) return 0;
 
-  const getRecentBoost = (exerciseName: string) => {
-    const match = recent.find(
-      (r) => normalize(r.name) === normalize(exerciseName)
-    );
-    if (!match) return 0;
-    return Math.min(5, Math.log2(match.count + 1));
-  };
+    /* ---- Tier-1: global MET + volume ---- */
 
-  const saveRecent = async (name: string) => {
-    const key = normalize(name);
-    const updated = [...recent];
-    const idx = updated.findIndex((r) => normalize(r.name) === key);
-
-    if (idx >= 0) updated[idx].count += 1;
-    else updated.push({ name, count: 1 });
-
-    updated.sort((a, b) => b.count - a.count);
-    setRecent(updated);
-    await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-  };
-
-  /* ------------------ CALCULATIONS ------------------ */
-
-  const calcVolume = () => {
-    let v = 0;
+    let volume = 0;
     exercises.forEach((ex) =>
       ex.sets.forEach((s) => {
-        v += Number(s.reps) * Number(s.weight);
+        volume += Number(s.reps) * Number(s.weight);
       })
     );
-    return v;
-  };
 
-  const metCalories =
-    userWeight && duration
-      ? Math.round(MET * userWeight * (Number(duration) / 60))
-      : 0;
+    const tier1Met =
+      userWeight > 0
+        ? BASE_MET * userWeight * (Number(duration) / 60)
+        : 0;
 
-  const volumeCalories = Math.round(calcVolume() * VOLUME_FACTOR);
-  const caloriesBurned = Math.max(metCalories, volumeCalories);
+    const tier1Volume = volume * VOLUME_FACTOR;
 
-  /* ------------------ ACTIONS ------------------ */
+    /* ---- Tier-2: physics (ROM-based work) ---- */
 
-  const addExercise = () => {
-    setExercises((prev) => [
-      ...prev,
-      { name: "", sets: [{ reps: "", weight: "" }] },
-    ]);
-    setSearch("");
-    setMuscleFilter(null);
-    setEquipmentFilter(null);
-    setPickerVisible(true);
-  };
+    let mechanicalWork = 0;
+    let totalSets = 0;
 
-  const addSet = (exerciseIndex: number) => {
-    setExercises((prev) =>
-      prev.map((ex, i) =>
-        i === exerciseIndex
-          ? { ...ex, sets: [...ex.sets, { reps: "", weight: "" }] }
-          : ex
-      )
+    exercises.forEach((ex) => {
+      const meta = catalog.find(
+        (c) => normalize(c.name) === normalize(ex.name)
+      );
+
+      let rom =
+        baseROMByTarget(meta?.target) +
+        equipmentROMModifier(meta?.equipment);
+
+      rom = clamp(rom, ROM_MIN, ROM_MAX);
+
+      ex.sets.forEach((s) => {
+        if (Number(s.reps) > 0 && Number(s.weight) > 0) {
+          mechanicalWork += Number(s.reps) * Number(s.weight) * rom;
+          totalSets++;
+        }
+      });
+    });
+
+    const tier2 =
+      mechanicalWork > 0
+        ? ((mechanicalWork * (1 + totalSets * 0.02)) /
+            MUSCLE_EFFICIENCY) /
+          JOULES_PER_KCAL
+        : 0;
+
+    /* ---- Tier-2.5: MET per exercise ---- */
+
+    let tier25 = 0;
+
+    if (userWeight > 0 && exercises.length > 0) {
+      const setsTotal = exercises.reduce(
+        (s, e) => s + e.sets.length,
+        0
+      );
+
+      exercises.forEach((ex) => {
+        const meta = catalog.find(
+          (c) => normalize(c.name) === normalize(ex.name)
+        );
+
+        let met =
+          baseMetByTarget(meta?.target) +
+          equipmentMetModifier(meta?.equipment);
+
+        const avgLoad =
+          ex.sets.reduce((s, x) => s + Number(x.weight), 0) /
+          Math.max(1, ex.sets.length);
+
+        if (avgLoad >= userWeight * 0.7) met += 0.5;
+        else if (avgLoad >= userWeight * 0.4) met += 0.2;
+
+        met = clamp(met, MET_MIN, MET_MAX);
+
+        const exerciseDuration =
+          (Number(duration) * ex.sets.length) / setsTotal;
+
+        tier25 += met * userWeight * (exerciseDuration / 60);
+      });
+    }
+
+    return Math.round(
+      Math.max(tier1Met, tier1Volume, tier2, tier25)
     );
-  };
+  }, [user, duration, userWeight, exercises, catalog]);
 
-  const deleteSet = (exerciseIndex: number, setIndex: number) => {
-    setExercises((prev) =>
-      prev.map((ex, i) =>
-        i === exerciseIndex
-          ? {
-              ...ex,
-              sets: ex.sets.filter((_, s) => s !== setIndex),
-            }
-          : ex
-      )
-    );
-  };
+  /* ===================== ACTIONS ===================== */
 
-  const deleteExercise = (index: number) => {
-    Alert.alert(
-      "Delete Exercise",
-      "Are you sure you want to remove this exercise?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            setExercises((prev) => prev.filter((_, i) => i !== index));
+  const addExerciseWithMemory = (name: string) => {
+    const remembered = lastSets[normalize(name)];
+    setExercises((p) => [
+      ...p,
+      {
+        name,
+        sets: [
+          {
+            reps: remembered ? String(remembered.reps) : "",
+            weight: remembered ? String(remembered.weight) : "",
           },
-        },
-      ]
-    );
+        ],
+      },
+    ]);
   };
 
-  /* ------------------ SAVE WORKOUT ------------------ */
+  const saveLastSets = async () => {
+    const updated = { ...lastSets };
+
+    exercises.forEach((ex) => {
+      const valid = ex.sets.filter(
+        (s) => Number(s.reps) > 0 && Number(s.weight) > 0
+      );
+      if (!valid.length) return;
+
+      const last = valid[valid.length - 1];
+      updated[normalize(ex.name)] = {
+        reps: Number(last.reps),
+        weight: Number(last.weight),
+      };
+    });
+
+    setLastSets(updated);
+    await AsyncStorage.setItem(LAST_SET_KEY, JSON.stringify(updated));
+  };
 
   const saveWorkout = async () => {
-    if (!workoutName.trim()) return Alert.alert("Missing workout name");
-    if (!duration || Number(duration) <= 0)
-      return Alert.alert("Enter valid duration");
-    if (exercises.length === 0) return Alert.alert("Add at least one exercise");
-
-    setSaving(true);
-
-    try {
-      await addDoc(collection(db, "users", user.uid, "workouts"), {
-        name: workoutName.trim(),
-        duration: Number(duration),
-        caloriesBurned,
-        createdAt: Timestamp.now(),
-        exercises: exercises.map((ex) => ({
-          name: ex.name.trim(),
-          sets: ex.sets.map((s) => ({
-            reps: Number(s.reps),
-            weight: Number(s.weight),
-          })),
-        })),
-      });
-
-      router.back();
-    } catch {
-      Alert.alert("Failed to save workout");
-    } finally {
-      setSaving(false);
+    if (!user) return;
+    if (!workoutName || !duration || exercises.length === 0) {
+      return Alert.alert("Incomplete workout");
     }
+
+    await saveLastSets();
+
+    await addDoc(collection(db, "users", user.uid, "workouts"), {
+      name: workoutName,
+      duration: Number(duration),
+      caloriesBurned,
+      createdAt: Timestamp.now(),
+      exercises,
+    });
+
+    router.back();
   };
 
-  /* ------------------ SEARCH + FILTER ------------------ */
+  /* ===================== RENDER GUARD ===================== */
 
-  const availableMuscles = useMemo(
-    () => Array.from(new Set(catalog.map((e) => e.target))).sort(),
-    [catalog]
-  );
+  if (!user) return null;
 
-  const availableEquipment = useMemo(
-    () => Array.from(new Set(catalog.map((e) => e.equipment))).sort(),
-    [catalog]
-  );
-
-  const filteredCatalog = useMemo<ScoredExercise[]>(() => {
-    const q = normalize(search);
-
-    return catalog
-      .filter((ex) => {
-        if (muscleFilter && ex.target !== muscleFilter) return false;
-        if (equipmentFilter && ex.equipment !== equipmentFilter) return false;
-        return true;
-      })
-      .map((ex) => {
-        let score = 0;
-        const name = normalize(ex.name);
-
-        if (q) {
-          if (name.startsWith(q)) score += 3;
-          if (name.includes(q)) score += 1;
-        }
-
-        score += getRecentBoost(ex.name);
-        return { ...ex, score };
-      })
-      .filter((ex) => (!q ? true : ex.score > 0))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 50);
-  }, [search, catalog, recent, muscleFilter, equipmentFilter]);
-
-  /* ------------------ UI ------------------ */
+  /* ===================== UI ===================== */
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.title}>Add Workout</Text>
 
         <Card>
@@ -283,186 +309,91 @@ export default function AddWorkout() {
           />
         </Card>
 
-        <Pressable onPress={addExercise} style={styles.addExercise}>
+        <Pressable
+          onPress={() => setPickerVisible(true)}
+          style={styles.addExercise}
+        >
           <Text style={styles.addExerciseText}>＋ Add Exercise</Text>
         </Pressable>
 
-        {/* -------- ADDED EXERCISES -------- */}
-
-        {exercises.map((ex, idx) => (
-          <Card key={idx} style={{ marginTop: 12 }}>
-            <View style={styles.exerciseHeader}>
-              <Text style={styles.exerciseTitle}>
-                {ex.name || "Select exercise"}
-              </Text>
-
-              <Pressable onPress={() => deleteExercise(idx)}>
-                <Text style={styles.deleteText}>Delete</Text>
-              </Pressable>
-            </View>
-
-            {ex.sets.map((set, sIdx) => (
-              <View key={sIdx} style={styles.setRow}>
-                <TextInput
-                  placeholder="Reps"
-                  keyboardType="numeric"
-                  value={set.reps}
-                  onChangeText={(v) =>
-                    setExercises((prev) =>
-                      prev.map((e, i) =>
-                        i === idx
-                          ? {
-                              ...e,
-                              sets: e.sets.map((s, j) =>
-                                j === sIdx ? { ...s, reps: v } : s
-                              ),
-                            }
-                          : e
-                      )
-                    )
-                  }
-                  style={styles.setInput}
-                />
-
-                <TextInput
-                  placeholder="Weight"
-                  keyboardType="numeric"
-                  value={set.weight}
-                  onChangeText={(v) =>
-                    setExercises((prev) =>
-                      prev.map((e, i) =>
-                        i === idx
-                          ? {
-                              ...e,
-                              sets: e.sets.map((s, j) =>
-                                j === sIdx ? { ...s, weight: v } : s
-                              ),
-                            }
-                          : e
-                      )
-                    )
-                  }
-                  style={styles.setInput}
-                />
-
-                <Pressable onPress={() => deleteSet(idx, sIdx)}>
-                  <Text style={styles.deleteSet}>✕</Text>
-                </Pressable>
-              </View>
-            ))}
-
-            <Pressable onPress={() => addSet(idx)}>
-              <Text style={{ color: "#2563EB", marginTop: 6 }}>+ Add Set</Text>
-            </Pressable>
-          </Card>
+        {exercises.map((ex, i) => (
+          <ExerciseCard
+            key={i}
+            exercise={ex}
+            index={i}
+            onAddSet={() =>
+              setExercises((p) =>
+                p.map((e, idx) =>
+                  idx === i
+                    ? { ...e, sets: [...e.sets, { reps: "", weight: "" }] }
+                    : e
+                )
+              )
+            }
+            onDeleteSet={(s) =>
+              setExercises((p) =>
+                p.map((e, idx) =>
+                  idx === i
+                    ? { ...e, sets: e.sets.filter((_, j) => j !== s) }
+                    : e
+                )
+              )
+            }
+            onDeleteExercise={() =>
+              setExercises((p) => p.filter((_, idx) => idx !== i))
+            }
+            onUpdateSet={(s, f, v) =>
+              setExercises((p) =>
+                p.map((e, idx) =>
+                  idx === i
+                    ? {
+                        ...e,
+                        sets: e.sets.map((x, j) =>
+                          j === s ? { ...x, [f]: v } : x
+                        ),
+                      }
+                    : e
+                )
+              )
+            }
+          />
         ))}
 
-        <Pressable
-          onPress={saveWorkout}
-          disabled={saving}
-          style={styles.saveButton}
-        >
+        <Pressable onPress={saveWorkout} style={styles.saveButton}>
           <Text style={styles.saveText}>
-            {saving ? "Saving..." : "Save Workout"}
+            Save Workout • {caloriesBurned} kcal
           </Text>
         </Pressable>
       </ScrollView>
 
-      {/* -------- EXERCISE PICKER MODAL -------- */}
-
-      <Modal visible={pickerVisible} animationType="slide">
-        <View style={{ flex: 1 }}>
-          <View style={{ padding: 16 }}>
-            <Text style={styles.modalTitle}>Select Exercise</Text>
-
-            <TextInput
-              placeholder="Search exercise"
-              value={search}
-              onChangeText={setSearch}
-              style={styles.searchInput}
-            />
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                alignItems: "center",
-                paddingVertical: 6,
-              }}
-            >
-              {availableMuscles.map((m) => (
-                <Pressable
-                  key={m}
-                  onPress={() => setMuscleFilter((p) => (p === m ? null : m))}
-                  style={[styles.chip, muscleFilter === m && styles.chipActive]}
-                >
-                  <Text>{m}</Text>
-                </Pressable>
-              ))}
-              {availableEquipment.map((e) => (
-                <Pressable
-                  key={e}
-                  onPress={() =>
-                    setEquipmentFilter((p) => (p === e ? null : e))
-                  }
-                  style={[
-                    styles.chip,
-                    equipmentFilter === e && styles.chipActive,
-                  ]}
-                >
-                  <Text>{e}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-
-          <FlatList
-            data={filteredCatalog}
-            keyExtractor={(item) => item.id}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                style={styles.exerciseItem}
-                onPress={() => {
-                  setExercises((prev) => {
-                    if (!prev.length) return prev;
-                    const last = prev.length - 1;
-                    return prev.map((ex, i) =>
-                      i === last ? { ...ex, name: item.name } : ex
-                    );
-                  });
-                  saveRecent(item.name);
-                  setPickerVisible(false);
-                }}
-              >
-                <Text style={styles.exerciseName}>{item.name}</Text>
-                <Text style={styles.exerciseMeta}>
-                  {item.target} · {item.equipment}
-                </Text>
-              </Pressable>
-            )}
-          />
-
-          <View style={{ padding: 16 }}>
-            <Pressable
-              onPress={() => setPickerVisible(false)}
-              style={styles.closeButton}
-            >
-              <Text style={styles.closeText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      <ExercisePickerModal
+        visible={pickerVisible}
+        search={search}
+        setSearch={setSearch}
+        availableMuscles={[...new Set(catalog.map((c) => c.target))]}
+        availableEquipment={[...new Set(catalog.map((c) => c.equipment))]}
+        muscleFilter={muscleFilter}
+        equipmentFilter={equipmentFilter}
+        setMuscleFilter={setMuscleFilter}
+        setEquipmentFilter={setEquipmentFilter}
+        data={catalog.filter((c) =>
+          normalize(c.name).includes(normalize(search))
+        )}
+        onSelect={(name) => {
+          addExerciseWithMemory(name);
+          setPickerVisible(false);
+        }}
+        onClose={() => setPickerVisible(false)}
+      />
     </>
   );
 }
 
-/* ------------------ STYLES ------------------ */
+/* ===================== STYLES ===================== */
 
 const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "700", marginBottom: 16 },
   label: { fontSize: 12, color: "#6B7280" },
-
   addExercise: {
     marginTop: 16,
     padding: 12,
@@ -471,7 +402,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addExerciseText: { color: "#1D4ED8", fontWeight: "600" },
-
   saveButton: {
     marginTop: 24,
     padding: 16,
@@ -480,76 +410,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveText: { color: "#fff", fontWeight: "600" },
-
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
-  searchInput: {
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: "#F3F4F6",
-    marginBottom: 12,
-  },
-
-  chip: {
-    height: 36,
-    paddingHorizontal: 14,
-    justifyContent: "center",
-    backgroundColor: "#E5E7EB",
-    borderRadius: 18,
-    marginRight: 8,
-  },
-  chipActive: {
-    backgroundColor: "#93C5FD",
-  },
-
-  exerciseItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  exerciseName: { fontSize: 15 },
-  exerciseMeta: { fontSize: 12, color: "#6B7280" },
-
-  exerciseHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  exerciseTitle: {
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  deleteText: {
-    color: "#DC2626",
-    fontWeight: "600",
-  },
-
-  setRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-  },
-
-  setInput: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 8,
-  },
-
-  deleteSet: {
-    color: "#DC2626",
-    fontSize: 18,
-    paddingHorizontal: 6,
-  },
-
-  closeButton: {
-    padding: 14,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  closeText: { fontWeight: "600" },
 });

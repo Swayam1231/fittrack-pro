@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-12-25",
+  "source": "local",
+  "totalExercises": 5500,
+  "bodyParts": [
+    "chest",
+    "back",
+    "shoulders",
+    "arms",
+    "waist",
+    "legs"
+  ],
+  "lookups": {
+    "bodyParts": [
+      "legs",
+      "chest",
+      "back",
+      "shoulders",
+      "arms",
+      "waist"
+    ],
+    "equipment": [
+      "barbell",
+      "dumbbell",
+      "machine",
+      "smith machine",
+      "body weight",
+      "cable",
+      "ab wheel",
+      "medicine ball"
+    ],
+    "difficulty": [
+      "advanced",
+      "beginner",
+      "intermediate"
+    ],
+    "category": [
+      "mobility",
+      "strength",
+      "cardio"
+    ]
+  }
+}
