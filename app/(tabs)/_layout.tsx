@@ -8,20 +8,20 @@ export default function TabLayout() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }} // ✅ COLOR ONLY
+      style={{ flex: 1, backgroundColor: colors.background }} 
       edges={["top"]}
     >
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.accent, // ✅ COLOR ONLY
-          tabBarInactiveTintColor: colors.textSecondary, // ✅ COLOR ONLY
+          tabBarActiveTintColor: colors.accent, 
+          tabBarInactiveTintColor: colors.textSecondary,  
           tabBarStyle: {
             height: 60,
             paddingTop: 6,
             paddingBottom: 6,
-            backgroundColor: colors.card, // ✅ COLOR ONLY
-            borderTopColor: colors.border, // ✅ COLOR ONLY
+            backgroundColor: colors.card,
+            borderTopColor: colors.border, 
           },
         }}
       >
