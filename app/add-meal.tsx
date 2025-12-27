@@ -4,16 +4,22 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { auth, db } from "../src/firebase/firebase";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
-import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
+import { useTheme } from "../src/context/ThemeContext";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 export default function AddMeal() {
   const router = useRouter();
-  const { colors } = useTheme(); // ✅ ADDED
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets(); // 🔥 KEY FIX
 
   const { mealType, date } = useLocalSearchParams<{
     mealType?: string;
@@ -23,7 +29,6 @@ export default function AddMeal() {
   const uid = auth.currentUser?.uid;
 
   /* ---------- FORM STATE ---------- */
-
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [calories, setCalories] = useState("");
@@ -33,7 +38,6 @@ export default function AddMeal() {
   const [saving, setSaving] = useState(false);
 
   /* ---------- SAVE ---------- */
-
   const saveMeal = async () => {
     if (!uid || !name.trim()) return;
 
@@ -46,12 +50,10 @@ export default function AddMeal() {
     await addDoc(collection(db, "users", uid, "meals"), {
       name: name.trim(),
       quantity: quantity.trim(),
-
       calories: Number(calories) || 0,
       protein: Number(protein) || 0,
       carbs: Number(carbs) || 0,
       fats: Number(fats) || 0,
-
       mealType: mealType || "Breakfast",
       createdAt: mealDate,
     });
@@ -61,132 +63,122 @@ export default function AddMeal() {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background }, // ✅
-      ]}
+    <SafeAreaView
+      edges={["top"]}
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <Text
-        style={[
-          styles.title,
-          { color: colors.textPrimary }, // ✅
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            paddingTop: insets.top + 12, // 🔥 REAL FIX
+            paddingBottom: 32,
+          },
         ]}
       >
-        Add {mealType || "Meal"}
-      </Text>
-
-      <TextInput
-        style={[
-          styles.input,
-          {
-            borderColor: colors.border,
-            color: colors.textPrimary,
-          }, // ✅
-        ]}
-        placeholder="Food name"
-        placeholderTextColor={colors.textSecondary}
-        value={name}
-        onChangeText={setName}
-      />
-
-      <TextInput
-        style={[
-          styles.input,
-          {
-            borderColor: colors.border,
-            color: colors.textPrimary,
-          }, // ✅
-        ]}
-        placeholder="Quantity (e.g. 100g)"
-        placeholderTextColor={colors.textSecondary}
-        value={quantity}
-        onChangeText={setQuantity}
-      />
-
-      <TextInput
-        style={[
-          styles.input,
-          {
-            borderColor: colors.border,
-            color: colors.textPrimary,
-          }, // ✅
-        ]}
-        placeholder="Calories"
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
-        value={calories}
-        onChangeText={setCalories}
-      />
-
-      <TextInput
-        style={[
-          styles.input,
-          {
-            borderColor: colors.border,
-            color: colors.textPrimary,
-          }, // ✅
-        ]}
-        placeholder="Protein (g)"
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
-        value={protein}
-        onChangeText={setProtein}
-      />
-
-      <TextInput
-        style={[
-          styles.input,
-          {
-            borderColor: colors.border,
-            color: colors.textPrimary,
-          }, // ✅
-        ]}
-        placeholder="Carbs (g)"
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
-        value={carbs}
-        onChangeText={setCarbs}
-      />
-
-      <TextInput
-        style={[
-          styles.input,
-          {
-            borderColor: colors.border,
-            color: colors.textPrimary,
-          }, // ✅
-        ]}
-        placeholder="Fats (g)"
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
-        value={fats}
-        onChangeText={setFats}
-      />
-
-      <Pressable
-        onPress={saveMeal}
-        disabled={saving}
-        style={[
-          styles.button,
-          { backgroundColor: colors.accent }, // ✅
-          saving && { opacity: 0.6 },
-        ]}
-      >
-        <Text style={styles.buttonText}>
-          {saving ? "Saving..." : "Save"}
+        <Text
+          style={[
+            styles.title,
+            { color: colors.textPrimary },
+          ]}
+        >
+          Add {mealType || "Meal"}
         </Text>
-      </Pressable>
-    </View>
+
+        <TextInput
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.textPrimary },
+          ]}
+          placeholder="Food name"
+          placeholderTextColor={colors.textSecondary}
+          value={name}
+          onChangeText={setName}
+        />
+
+        <TextInput
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.textPrimary },
+          ]}
+          placeholder="Quantity (e.g. 100g)"
+          placeholderTextColor={colors.textSecondary}
+          value={quantity}
+          onChangeText={setQuantity}
+        />
+
+        <TextInput
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.textPrimary },
+          ]}
+          placeholder="Calories"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="numeric"
+          value={calories}
+          onChangeText={setCalories}
+        />
+
+        <TextInput
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.textPrimary },
+          ]}
+          placeholder="Protein (g)"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="numeric"
+          value={protein}
+          onChangeText={setProtein}
+        />
+
+        <TextInput
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.textPrimary },
+          ]}
+          placeholder="Carbs (g)"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="numeric"
+          value={carbs}
+          onChangeText={setCarbs}
+        />
+
+        <TextInput
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.textPrimary },
+          ]}
+          placeholder="Fats (g)"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="numeric"
+          value={fats}
+          onChangeText={setFats}
+        />
+
+        <Pressable
+          onPress={saveMeal}
+          disabled={saving}
+          style={[
+            styles.button,
+            { backgroundColor: colors.accent },
+            saving && { opacity: 0.6 },
+          ]}
+        >
+          <Text style={styles.buttonText}>
+            {saving ? "Saving..." : "Save"}
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 /* ---------- STYLES ---------- */
-
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
   },
   title: {
     fontSize: 20,
@@ -195,13 +187,11 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
   },
   button: {
-    backgroundColor: "#2563EB",
     padding: 14,
     borderRadius: 12,
     alignItems: "center",
