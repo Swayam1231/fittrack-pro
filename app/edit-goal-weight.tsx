@@ -11,12 +11,17 @@ import { useRouter } from "expo-router";
 import { auth, db } from "../src/firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { Card } from "../src/components/Card";
-import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
+import { useTheme } from "../src/context/ThemeContext";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 export default function EditGoalWeight() {
   const router = useRouter();
   const uid = auth.currentUser?.uid;
-  const { colors } = useTheme(); // ✅ ADDED
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets(); // 🔥 KEY
 
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
   const [goalWeight, setGoalWeight] = useState("");
@@ -69,14 +74,24 @@ export default function EditGoalWeight() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+    <SafeAreaView
+      edges={["top"]}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 12, // 🔥 FIX HEADER
+          paddingBottom: 140 + insets.bottom, // 🔥 FIX FOOTER
+          backgroundColor: colors.background,
+        }}
+      >
         <Text
           style={{
             fontSize: 22,
             fontWeight: "700",
             marginBottom: 16,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Edit Goal Weight
@@ -85,17 +100,18 @@ export default function EditGoalWeight() {
         <Card>
           <Text
             style={{
-              color: colors.textSecondary, // ✅
+              color: colors.textSecondary,
               marginBottom: 4,
             }}
           >
             Current Weight
           </Text>
+
           <Text
             style={{
               fontSize: 18,
               fontWeight: "600",
-              color: colors.textPrimary, // ✅
+              color: colors.textPrimary,
             }}
           >
             {currentWeight ? `${currentWeight} kg` : "—"}
@@ -103,26 +119,27 @@ export default function EditGoalWeight() {
 
           <Text
             style={{
-              color: colors.textSecondary, // ✅
+              color: colors.textSecondary,
               marginTop: 16,
               marginBottom: 4,
             }}
           >
             Goal Weight
           </Text>
+
           <TextInput
             keyboardType="numeric"
             placeholder="Enter target weight"
             placeholderTextColor={colors.textSecondary}
             value={goalWeight}
             onChangeText={setGoalWeight}
-            style={{ color: colors.textPrimary }} // ✅
+            style={{ color: colors.textPrimary }}
           />
 
           <Text
             style={{
               fontSize: 12,
-              color: colors.textSecondary, // ✅
+              color: colors.textSecondary,
               marginTop: 8,
             }}
           >
@@ -131,16 +148,17 @@ export default function EditGoalWeight() {
         </Card>
       </ScrollView>
 
+      {/* FIXED FOOTER */}
       <View
         style={{
           position: "absolute",
-          bottom: 0,
           left: 0,
           right: 0,
+          bottom: insets.bottom, // 🔥 FIX NAV BAR
           padding: 16,
-          backgroundColor: colors.card, // ✅
+          backgroundColor: colors.card,
           borderTopWidth: 1,
-          borderColor: colors.border, // ✅
+          borderColor: colors.border,
         }}
       >
         <Pressable
@@ -148,8 +166,8 @@ export default function EditGoalWeight() {
           disabled={saving}
           style={{
             backgroundColor: saving
-              ? colors.border // ✅ (disabled)
-              : colors.accent, // ✅
+              ? colors.border
+              : colors.accent,
             padding: 16,
             borderRadius: 12,
             alignItems: "center",
@@ -160,6 +178,6 @@ export default function EditGoalWeight() {
           </Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
