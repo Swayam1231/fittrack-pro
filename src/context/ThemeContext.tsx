@@ -61,7 +61,6 @@ const darkColors: ThemeColors = {
    ===================================================== */
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
 const STORAGE_KEY = "app_theme_mode";
 
 /* =====================================================
@@ -73,10 +72,12 @@ export function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const systemScheme: ColorSchemeName =
-    Appearance.getColorScheme() ?? "light";
-
   const [mode, setModeState] = useState<ThemeMode>("system");
+
+  // 🔥 FIX: system theme must be STATE, not a constant
+  const [systemScheme, setSystemScheme] =
+    useState<ColorSchemeName>(Appearance.getColorScheme());
+
   const [resolvedTheme, setResolvedTheme] =
     useState<ResolvedTheme>("light");
 
@@ -92,6 +93,15 @@ export function ThemeProvider({
         setModeState(stored);
       }
     })();
+  }, []);
+
+  /* ---------- LISTEN TO SYSTEM THEME CHANGES (🔥 FIX) ---------- */
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystemScheme(colorScheme);
+    });
+
+    return () => sub.remove();
   }, []);
 
   /* ---------- RESOLVE THEME ---------- */

@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { formatWeight, UnitSystem } from "../../utils/unit";
-import { useTheme } from "../../context/ThemeContext"; // ✅ ADDED
+import { useTheme } from "../../context/ThemeContext";
 
 type Props = {
   currentWeight: number;
@@ -18,39 +18,31 @@ export default function GoalsMilestones({
   unit,
 }: Props) {
   const router = useRouter();
-  const { colors } = useTheme(); // ✅ ADDED
+  const { colors } = useTheme();
 
-  /* ---------- SAFETY ---------- */
+  /* ---------- NO GOAL STATE ---------- */
   if (!targetWeight || typeof goalStartWeight !== "number") {
     return (
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: colors.card }, // ✅
-        ]}
-      >
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Header
           onEdit={() => router.push("/edit-goal-weight")}
-          color={colors.accent}
+          titleColor={colors.textPrimary}
+          editColor={colors.accent}
         />
-        <Text style={[styles.muted, { color: colors.textSecondary }]}>
+        <Text style={{ color: colors.textSecondary }}>
           Set a goal weight to start tracking milestones.
         </Text>
       </View>
     );
   }
 
-  /* ---------- DIRECTION-AWARE PROGRESS ---------- */
+  /* ---------- PROGRESS CALCULATION ---------- */
   const startWeight = goalStartWeight;
   const isFatLoss = targetWeight < startWeight;
 
-  let progressDelta = 0;
-
-  if (isFatLoss) {
-    progressDelta = Math.max(0, startWeight - currentWeight);
-  } else {
-    progressDelta = Math.max(0, currentWeight - startWeight);
-  }
+  const progressDelta = isFatLoss
+    ? Math.max(0, startWeight - currentWeight)
+    : Math.max(0, currentWeight - startWeight);
 
   const totalDelta = Math.abs(startWeight - targetWeight);
 
@@ -67,38 +59,29 @@ export default function GoalsMilestones({
   ];
 
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card }, // ✅
-      ]}
-    >
+    <View style={[styles.card, { backgroundColor: colors.card }]}>
       <Header
         onEdit={() => router.push("/edit-goal-weight")}
-        color={colors.accent}
+        titleColor={colors.textPrimary}
+        editColor={colors.accent}
       />
 
       {/* CURRENT GOAL */}
       <View
         style={[
           styles.goalBox,
-          { backgroundColor: colors.background }, // ✅
+          { backgroundColor: colors.background },
         ]}
       >
         <Text style={[styles.bold, { color: colors.textPrimary }]}>
           Current Goal
         </Text>
 
-        <Text style={[styles.goalText, { color: colors.textPrimary }]}>
+        <Text style={{ color: colors.textPrimary }}>
           Reach {formatWeight(targetWeight, unit)}
         </Text>
 
-        <Text
-          style={[
-            styles.smallMuted,
-            { color: colors.textSecondary },
-          ]}
-        >
+        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
           Started at {formatWeight(startWeight, unit)} • Now{" "}
           {formatWeight(currentWeight, unit)}
         </Text>
@@ -107,7 +90,7 @@ export default function GoalsMilestones({
         <View
           style={[
             styles.progressBg,
-            { backgroundColor: colors.border }, // ✅
+            { backgroundColor: colors.border },
           ]}
         >
           <View
@@ -115,7 +98,7 @@ export default function GoalsMilestones({
               styles.progressFill,
               {
                 width: `${progressPercent}%`,
-                backgroundColor: colors.accent, // ✅
+                backgroundColor: colors.accent,
               },
             ]}
           />
@@ -139,7 +122,7 @@ export default function GoalsMilestones({
                 {
                   backgroundColor: achieved
                     ? colors.background
-                    : colors.border, // ✅
+                    : colors.border,
                 },
               ]}
             >
@@ -154,13 +137,15 @@ export default function GoalsMilestones({
                   achieved
                     ? colors.accent
                     : colors.textSecondary
-                } // ✅
+                }
               />
               <Text
-                style={[
-                  styles.milestoneText,
-                  { color: colors.textPrimary },
-                ]}
+                style={{
+                  fontSize: 11,
+                  marginTop: 6,
+                  fontWeight: "500",
+                  color: colors.textPrimary,
+                }}
               >
                 {m.label}
               </Text>
@@ -175,16 +160,20 @@ export default function GoalsMilestones({
 /* ---------- HEADER ---------- */
 function Header({
   onEdit,
-  color,
+  titleColor,
+  editColor,
 }: {
   onEdit: () => void;
-  color: string;
+  titleColor: string;
+  editColor: string;
 }) {
   return (
     <View style={styles.header}>
-      <Text style={styles.title}>Goals & Milestones</Text>
+      <Text style={[styles.title, { color: titleColor }]}>
+        Goals & Milestones
+      </Text>
       <Pressable onPress={onEdit}>
-        <Text style={[styles.edit, { color }]}>
+        <Text style={{ color: editColor, fontWeight: "600" }}>
           Edit
         </Text>
       </Pressable>
@@ -195,7 +184,6 @@ function Header({
 /* ---------- STYLES ---------- */
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -210,27 +198,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
-  edit: {
-    fontWeight: "600",
-  },
-  muted: {
-    color: "#6B7280",
-  },
   bold: {
     fontWeight: "600",
     marginBottom: 8,
-  },
-  smallMuted: {
-    marginTop: 4,
-    fontSize: 12,
   },
   goalBox: {
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
-  },
-  goalText: {
-    marginTop: 6,
   },
   progressBg: {
     height: 6,
@@ -251,10 +226,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     alignItems: "center",
-  },
-  milestoneText: {
-    fontSize: 11,
-    marginTop: 6,
-    fontWeight: "500",
   },
 });

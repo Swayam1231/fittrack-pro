@@ -8,6 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useTheme } from "../context/ThemeContext";
@@ -46,6 +47,25 @@ function mapActivity(level: FitnessLevel) {
       return "moderate";
   }
 }
+
+/* ---- FITNESS LEVEL META ---- */
+const FITNESS_LEVEL_META: Record<
+  FitnessLevel,
+  { icon: any; hint: string }
+> = {
+  Beginner: {
+    icon: "leaf-outline",
+    hint: "New to training or inconsistent workouts",
+  },
+  Intermediate: {
+    icon: "barbell-outline",
+    hint: "Training regularly (3–5 days/week)",
+  },
+  Advanced: {
+    icon: "flame-outline",
+    hint: "High volume, intense training experience",
+  },
+};
 
 export default function EditProfileModal({
   visible,
@@ -171,12 +191,60 @@ export default function EditProfileModal({
             placeholder="e.g. 22"
           />
 
-          <Segment
-            title="Fitness Level *"
-            options={["Beginner", "Intermediate", "Advanced"]}
-            value={fitnessLevel}
-            onChange={setFitnessLevel}
-          />
+          {/* 🔥 FITNESS LEVEL WITH ICONS */}
+          <Label text="Fitness Level *" />
+          {(["Beginner", "Intermediate", "Advanced"] as FitnessLevel[]).map(
+            (level) => {
+              const selected = fitnessLevel === level;
+              const meta = FITNESS_LEVEL_META[level];
+
+              return (
+                <Pressable
+                  key={level}
+                  onPress={() => setFitnessLevel(level)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 14,
+                    borderRadius: 14,
+                    marginBottom: 10,
+                    backgroundColor: selected
+                      ? colors.accent
+                      : colors.card,
+                  }}
+                >
+                  <Ionicons
+                    name={meta.icon}
+                    size={22}
+                    color={selected ? "#fff" : colors.textPrimary}
+                    style={{ marginRight: 12 }}
+                  />
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontWeight: "700",
+                        color: selected ? "#fff" : colors.textPrimary,
+                      }}
+                    >
+                      {level}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        marginTop: 2,
+                        color: selected
+                          ? "#E5E7EB"
+                          : colors.textSecondary,
+                      }}
+                    >
+                      {meta.hint}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            }
+          )}
 
           <Segment
             title="Primary Goal *"
@@ -216,7 +284,14 @@ export default function EditProfileModal({
 function Label({ text }: { text: string }) {
   const { colors } = useTheme();
   return (
-    <Text style={{ fontWeight: "600", marginTop: 16, marginBottom: 6, color: colors.textPrimary }}>
+    <Text
+      style={{
+        fontWeight: "600",
+        marginTop: 16,
+        marginBottom: 6,
+        color: colors.textPrimary,
+      }}
+    >
       {text}
     </Text>
   );
@@ -238,7 +313,7 @@ function Input(props: any) {
   );
 }
 
-/* ---- SEGMENT ---- */
+/* ---- SEGMENT (unchanged) ---- */
 function Segment({
   title,
   options,

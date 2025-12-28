@@ -1,6 +1,9 @@
 import { View, Text, ActivityIndicator } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 
 export function Loading({ label = "Loading..." }: { label?: string }) {
+  const { colors } = useTheme();
+
   return (
     <View
       style={{
@@ -8,15 +11,15 @@ export function Loading({ label = "Loading..." }: { label?: string }) {
         justifyContent: "center",
         alignItems: "center",
         padding: 24,
+        backgroundColor: colors.background,
       }}
     >
-      <ActivityIndicator size="large" />
+      <ActivityIndicator size="large" color={colors.accent} />
 
-      {/* ✅ FORCE STRING RENDER */}
       <Text
         style={{
           marginTop: 12,
-          color: "#6B7280",
+          color: colors.textSecondary,
         }}
       >
         {typeof label === "string" ? label : "Loading..."}
