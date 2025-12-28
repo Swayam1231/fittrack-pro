@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { useTheme } from "../context/ThemeContext"; // ✅ added
+import { useTheme } from "../context/ThemeContext";
 
 /* ---- CALCULATION ENGINE ---- */
 import { calculateTargets } from "../utils/calculateTargets";
@@ -55,9 +55,9 @@ export default function EditProfileModal({
   onClose: () => void;
 }) {
   const uid = auth.currentUser?.uid;
-  const { colors } = useTheme(); // ✅ added
+  const { colors } = useTheme();
 
-  /* ---- STATE (HOOKS MUST ALWAYS RUN) ---- */
+  /* ---- STATE ---- */
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("Male");
   const [age, setAge] = useState("");
@@ -89,10 +89,9 @@ export default function EditProfileModal({
     })();
   }, [visible, uid]);
 
-  /* ---- EARLY RETURN AFTER HOOKS ---- */
   if (!uid) return null;
 
-  /* ---- SAVE + RECALCULATE ---- */
+  /* ---- SAVE ---- */
   const saveProfile = async () => {
     if (!name || !age || !height || !weight) {
       Alert.alert("Missing fields", "Please fill all required fields.");
@@ -103,11 +102,6 @@ export default function EditProfileModal({
     const heightNum = Number(height);
     const weightNum = Number(weight);
     const bfNum = bodyFat ? Number(bodyFat) : undefined;
-
-    if (bfNum && (bfNum < 5 || bfNum > 50)) {
-      Alert.alert("Invalid Body Fat %", "Enter a value between 5–50%");
-      return;
-    }
 
     const targets = calculateTargets({
       gender: mapGender(gender),
@@ -128,143 +122,123 @@ export default function EditProfileModal({
       bodyFat: bfNum ?? null,
       fitnessLevel,
       primaryGoal,
-      targets: {
-        calories: targets.calories,
-        protein: targets.protein,
-        carbs: targets.carbs,
-        fats: targets.fats,
-      },
+      targets,
     });
 
     onClose();
   };
 
-  /* ---- UI (UNCHANGED) ---- */
+  /* ---- UI ---- */
   return (
     <Modal visible={visible} animationType="slide">
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "700",
-            marginBottom: 20,
-            color: colors.textPrimary, // ✅
-          }}
-        >
-          Edit Core Profile
-        </Text>
-
-        <Text style={[labelStyle, { color: colors.textPrimary }]}>
-          Name *
-        </Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          style={[
-            inputStyle,
-            { backgroundColor: colors.background }, // ✅
-          ]}
-        />
-
-        <Segment
-          title="Gender *"
-          options={["Male", "Female"]}
-          value={gender}
-          onChange={setGender}
-        />
-
-        <Text style={[labelStyle, { color: colors.textPrimary }]}>
-          Age *
-        </Text>
-        <TextInput
-          value={age}
-          onChangeText={setAge}
-          keyboardType="number-pad"
-          style={[
-            inputStyle,
-            { backgroundColor: colors.background }, // ✅
-          ]}
-        />
-
-        <Text style={[labelStyle, { color: colors.textPrimary }]}>
-          Height (cm) *
-        </Text>
-        <TextInput
-          value={height}
-          onChangeText={setHeight}
-          keyboardType="number-pad"
-          style={[
-            inputStyle,
-            { backgroundColor: colors.background }, // ✅
-          ]}
-        />
-
-        <Text style={[labelStyle, { color: colors.textPrimary }]}>
-          Weight (kg) *
-        </Text>
-        <TextInput
-          value={weight}
-          onChangeText={setWeight}
-          keyboardType="number-pad"
-          style={[
-            inputStyle,
-            { backgroundColor: colors.background }, // ✅
-          ]}
-        />
-
-        <Text style={[labelStyle, { color: colors.textPrimary }]}>
-          Body Fat % (optional)
-        </Text>
-        <TextInput
-          value={bodyFat}
-          onChangeText={setBodyFat}
-          keyboardType="decimal-pad"
-          placeholder="e.g. 22"
-          style={[
-            inputStyle,
-            { backgroundColor: colors.background }, // ✅
-          ]}
-        />
-
-        <Segment
-          title="Fitness Level *"
-          options={["Beginner", "Intermediate", "Advanced"]}
-          value={fitnessLevel}
-          onChange={setFitnessLevel}
-        />
-
-        <Segment
-          title="Primary Goal *"
-          options={["Fat Loss", "Maintenance", "Muscle Gain"]}
-          value={primaryGoal}
-          onChange={setPrimaryGoal}
-        />
-
-        <Pressable
-          onPress={saveProfile}
-          style={[saveBtn, { backgroundColor: colors.accent }]} // ✅
-        >
-          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-            Save & Recalculate
-          </Text>
-        </Pressable>
-
-        <Pressable onPress={onClose} style={{ marginTop: 12 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
           <Text
             style={{
-              textAlign: "center",
-              color: colors.textSecondary, // ✅
+              fontSize: 22,
+              fontWeight: "700",
+              marginBottom: 20,
+              color: colors.textPrimary,
             }}
           >
-            Cancel
+            Edit Core Profile
           </Text>
-        </Pressable>
-      </ScrollView>
+
+          <Label text="Name *" />
+          <Input value={name} onChangeText={setName} />
+
+          <Segment
+            title="Gender *"
+            options={["Male", "Female"]}
+            value={gender}
+            onChange={setGender}
+          />
+
+          <Label text="Age *" />
+          <Input value={age} onChangeText={setAge} keyboardType="number-pad" />
+
+          <Label text="Height (cm) *" />
+          <Input value={height} onChangeText={setHeight} keyboardType="number-pad" />
+
+          <Label text="Weight (kg) *" />
+          <Input value={weight} onChangeText={setWeight} keyboardType="number-pad" />
+
+          <Label text="Body Fat % (optional)" />
+          <Input
+            value={bodyFat}
+            onChangeText={setBodyFat}
+            keyboardType="decimal-pad"
+            placeholder="e.g. 22"
+          />
+
+          <Segment
+            title="Fitness Level *"
+            options={["Beginner", "Intermediate", "Advanced"]}
+            value={fitnessLevel}
+            onChange={setFitnessLevel}
+          />
+
+          <Segment
+            title="Primary Goal *"
+            options={["Fat Loss", "Maintenance", "Muscle Gain"]}
+            value={primaryGoal}
+            onChange={setPrimaryGoal}
+          />
+
+          <Pressable
+            onPress={saveProfile}
+            style={{
+              marginTop: 32,
+              padding: 16,
+              borderRadius: 14,
+              backgroundColor: colors.accent,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
+              Save & Recalculate
+            </Text>
+          </Pressable>
+
+          <Pressable onPress={onClose} style={{ marginTop: 12 }}>
+            <Text style={{ textAlign: "center", color: colors.textSecondary }}>
+              Cancel
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </View>
     </Modal>
   );
 }
 
-/* ---- SEGMENT COMPONENT ---- */
+/* ---- REUSABLES ---- */
+
+function Label({ text }: { text: string }) {
+  const { colors } = useTheme();
+  return (
+    <Text style={{ fontWeight: "600", marginTop: 16, marginBottom: 6, color: colors.textPrimary }}>
+      {text}
+    </Text>
+  );
+}
+
+function Input(props: any) {
+  const { colors } = useTheme();
+  return (
+    <TextInput
+      {...props}
+      style={{
+        borderRadius: 12,
+        padding: 14,
+        backgroundColor: colors.card,
+        color: colors.textPrimary,
+      }}
+      placeholderTextColor={colors.textSecondary}
+    />
+  );
+}
+
+/* ---- SEGMENT ---- */
 function Segment({
   title,
   options,
@@ -276,13 +250,11 @@ function Segment({
   value: string;
   onChange: (v: any) => void;
 }) {
-  const { colors } = useTheme(); // ✅ added
+  const { colors } = useTheme();
 
   return (
     <>
-      <Text style={[labelStyle, { color: colors.textPrimary }]}>
-        {title}
-      </Text>
+      <Label text={title} />
       <View style={{ flexDirection: "row", borderRadius: 12, overflow: "hidden" }}>
         {options.map((o) => (
           <Pressable
@@ -291,14 +263,13 @@ function Segment({
             style={{
               flex: 1,
               paddingVertical: 12,
-              backgroundColor:
-                value === o ? colors.accent : colors.border, // ✅
+              backgroundColor: value === o ? colors.accent : colors.border,
               alignItems: "center",
             }}
           >
             <Text
               style={{
-                color: value === o ? "#fff" : colors.textPrimary, // ✅
+                color: value === o ? "#fff" : colors.textPrimary,
                 fontWeight: "600",
               }}
             >
@@ -310,22 +281,3 @@ function Segment({
     </>
   );
 }
-
-/* ---- STYLES ---- */
-const labelStyle = {
-  fontWeight: "600" as const,
-  marginTop: 16,
-  marginBottom: 6,
-};
-
-const inputStyle = {
-  borderRadius: 12,
-  padding: 14,
-};
-
-const saveBtn = {
-  padding: 16,
-  borderRadius: 14,
-  alignItems: "center" as const,
-  marginTop: 32,
-};

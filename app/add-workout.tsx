@@ -10,6 +10,8 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import { auth, db } from "../src/firebase/firebase";
 import {
   addDoc,
@@ -18,11 +20,12 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+
 import { Card } from "../src/components/Card";
 import { useExerciseCatalog } from "../src/hooks/useExerciseCatalog";
 import { ExerciseCard } from "../src/components/ExerciseCard";
 import { ExercisePickerModal } from "../src/components/ExercisePickerModal";
-import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
+import { useTheme } from "../src/context/ThemeContext";
 
 /* ===================== TYPES ===================== */
 
@@ -32,24 +35,6 @@ type Exercise = { name: string; sets: SetEntry[] };
 type LastSetMap = {
   [exerciseName: string]: { reps: number; weight: number };
 };
-
-/* ===================== CONSTANTS ===================== */
-
-// Tier-1
-const BASE_MET = 6;
-const VOLUME_FACTOR = 0.035;
-
-// Tier-2 (physics)
-const MUSCLE_EFFICIENCY = 0.25;
-const JOULES_PER_KCAL = 4184;
-
-// Tier-2.5 (MET per exercise)
-const MET_MIN = 3.5;
-const MET_MAX = 9.0;
-
-// ROM
-const ROM_MIN = 0.25;
-const ROM_MAX = 0.85;
 
 const LAST_SET_KEY = "exercise_last_sets";
 
@@ -64,7 +49,7 @@ export default function AddWorkout() {
   const router = useRouter();
   const user = auth.currentUser;
   const { exercises: catalog } = useExerciseCatalog();
-  const { colors } = useTheme(); // ✅ ADDED
+  const { colors } = useTheme();
 
   /* ---------- STATE ---------- */
 
@@ -97,27 +82,32 @@ export default function AddWorkout() {
     });
   }, [user]);
 
-  /* ===================== CALORIE ENGINE ===================== */
+  /* ===================== CALORIES ===================== */
 
   const caloriesBurned = useMemo(() => {
-    if (!user || !duration) return 0;
+  if (!user || !duration || userWeight <= 0) return 0;
 
-    let volume = 0;
-    exercises.forEach((ex) =>
-      ex.sets.forEach((s) => {
-        volume += Number(s.reps) * Number(s.weight);
-      })
-    );
+  const durationMinutes = Number(duration);
+  if (durationMinutes <= 0) return 0;
 
-    const tier1Met =
-      userWeight > 0
-        ? BASE_MET * userWeight * (Number(duration) / 60)
-        : 0;
+  // Base MET for strength training
+  let met = 5.0;
 
-    const tier1Volume = volume * VOLUME_FACTOR;
+  // Slightly scale MET based on workout density
+  const totalSets = exercises.reduce(
+    (sum, ex) => sum + ex.sets.length,
+    0
+  );
 
-    return Math.round(Math.max(tier1Met, tier1Volume));
-  }, [user, duration, userWeight, exercises]);
+  if (totalSets >= 20) met = 6.0;
+  else if (totalSets >= 12) met = 5.5;
+
+  const calories =
+    met * userWeight * (durationMinutes / 60);
+
+  return Math.round(calories);
+}, [user, duration, userWeight, exercises]);
+
 
   /* ===================== ACTIONS ===================== */
 
@@ -139,6 +129,7 @@ export default function AddWorkout() {
 
   const saveWorkout = async () => {
     if (!user) return;
+
     if (!workoutName || !duration || exercises.length === 0) {
       return Alert.alert("Incomplete workout");
     }
@@ -159,28 +150,25 @@ export default function AddWorkout() {
   /* ===================== UI ===================== */
 
   return (
-    <>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           Add Workout
         </Text>
 
+        {/* ---------- BASIC INFO ---------- */}
         <Card>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
+          <Text style={{ color: colors.textSecondary }}>
             Workout Name
           </Text>
           <TextInput
             value={workoutName}
             onChangeText={setWorkoutName}
             style={{ color: colors.textPrimary }}
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <Text
-            style={[
-              styles.label,
-              { marginTop: 12, color: colors.textSecondary },
-            ]}
-          >
+          <Text style={{ marginTop: 12, color: colors.textSecondary }}>
             Duration (minutes)
           </Text>
           <TextInput
@@ -188,27 +176,24 @@ export default function AddWorkout() {
             value={duration}
             onChangeText={setDuration}
             style={{ color: colors.textPrimary }}
+            placeholderTextColor={colors.textSecondary}
           />
         </Card>
 
+        {/* ---------- ADD EXERCISE ---------- */}
         <Pressable
           onPress={() => setPickerVisible(true)}
           style={[
             styles.addExercise,
-            { backgroundColor: colors.card
- },
+            { backgroundColor: colors.card },
           ]}
         >
-          <Text
-            style={[
-              styles.addExerciseText,
-              { color: colors.accent },
-            ]}
-          >
+          <Text style={{ color: colors.accent, fontWeight: "600" }}>
             ＋ Add Exercise
           </Text>
         </Pressable>
 
+        {/* ---------- EXERCISES ---------- */}
         {exercises.map((ex, i) => (
           <ExerciseCard
             key={i}
@@ -252,6 +237,7 @@ export default function AddWorkout() {
           />
         ))}
 
+        {/* ---------- SAVE ---------- */}
         <Pressable
           onPress={saveWorkout}
           style={[
@@ -265,6 +251,7 @@ export default function AddWorkout() {
         </Pressable>
       </ScrollView>
 
+      {/* ---------- EXERCISE PICKER MODAL (FIXED PROPS) ---------- */}
       <ExercisePickerModal
         visible={pickerVisible}
         search={search}
@@ -284,29 +271,32 @@ export default function AddWorkout() {
         }}
         onClose={() => setPickerVisible(false)}
       />
-    </>
+    </SafeAreaView>
   );
 }
 
 /* ===================== STYLES ===================== */
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 16 },
-  label: { fontSize: 12, color: "#6B7280" },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
   addExercise: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: "#DBEAFE",
     borderRadius: 10,
     alignItems: "center",
   },
-  addExerciseText: { color: "#1D4ED8", fontWeight: "600" },
   saveButton: {
     marginTop: 24,
     padding: 16,
-    backgroundColor: "#2563EB",
     borderRadius: 12,
     alignItems: "center",
   },
-  saveText: { color: "#fff", fontWeight: "600" },
+  saveText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
 });

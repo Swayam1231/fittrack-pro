@@ -1,10 +1,4 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  SafeAreaView,
-} from "react-native";
+import { View, Text, ScrollView, Pressable, SafeAreaView } from "react-native";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { auth, db } from "../../src/firebase/firebase";
@@ -56,14 +50,11 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
-    const unsub = onSnapshot(
-      doc(db, "users", user.uid),
-      (snap) => {
-        if (snap.exists()) {
-          setTargets(snap.data().targets);
-        }
+    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (snap.exists()) {
+        setTargets(snap.data().targets);
       }
-    );
+    });
 
     return unsub;
   }, [user]);
@@ -116,21 +107,14 @@ export default function Home() {
   );
 
   const burnedCalories = useMemo(
-    () =>
-      workouts.reduce(
-        (sum, w) => sum + (w.caloriesBurned || 0),
-        0
-      ),
+    () => workouts.reduce((sum, w) => sum + (w.caloriesBurned || 0), 0),
     [workouts]
   );
 
   const targetCalories = targets?.calories || 0;
   const targetProtein = targets?.protein || 0;
 
-  const remainingCalories = Math.max(
-    targetCalories - consumedCalories,
-    0
-  );
+  const remainingCalories = Math.max(targetCalories - consumedCalories, 0);
 
   const calorieProgress =
     targetCalories > 0
@@ -199,9 +183,7 @@ export default function Home() {
 
         {/* ---------- DAILY SUMMARY ---------- */}
         <Card style={{ backgroundColor: colors.accent, marginBottom: 16 }}>
-          <Text style={{ color: "#E0E7FF", fontSize: 14 }}>
-            Daily Summary
-          </Text>
+          <Text style={{ color: "#E0E7FF", fontSize: 14 }}>Daily Summary</Text>
 
           <Text style={{ color: "#E0E7FF", marginBottom: 12 }}>
             {formatDate(new Date())}
@@ -276,16 +258,23 @@ export default function Home() {
         </Card>
 
         {/* ---------- DAILY TIP ---------- */}
-        <Card style={{ backgroundColor: "#EFF6FF" }}>
+        <Card
+          style={{
+            backgroundColor: colors.card,
+            borderLeftWidth: 4,
+            borderLeftColor: colors.accent,
+          }}
+        >
           <Text
             style={{
               fontWeight: "600",
               marginBottom: 4,
-              color: colors.textPrimary, // ✅
+              color: colors.textPrimary,
             }}
           >
             💡 Daily Tip
           </Text>
+
           <Text style={{ color: colors.textSecondary }}>
             You are doing great! Make sure to eat enough to fuel your workouts.
           </Text>
@@ -314,9 +303,7 @@ function StatCard({
 
   return (
     <Card style={{ width: "48%" }}>
-      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-        {title}
-      </Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary }}>{title}</Text>
       <Text
         style={{
           fontSize: 22,
@@ -346,8 +333,7 @@ function MacroRow({
 }) {
   const { colors } = useTheme(); // ✅ ADDED
 
-  const percent =
-    target > 0 ? Math.min((value / target) * 100, 100) : 0;
+  const percent = target > 0 ? Math.min((value / target) * 100, 100) : 0;
 
   return (
     <View style={{ marginBottom: 12 }}>

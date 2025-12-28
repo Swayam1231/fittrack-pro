@@ -1,11 +1,12 @@
 // src/components/profile/StatCard.tsx
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext";
 
 type Props = {
   icon: any;
   label: string;
-  value: string | number; // ← allow numbers safely
+  value: string | number;
   subtitle?: string;
   bg: string;
   color: string;
@@ -19,6 +20,8 @@ export default function StatCard({
   bg,
   color,
 }: Props) {
+  const { colors } = useTheme();
+
   return (
     <View
       style={{
@@ -31,17 +34,38 @@ export default function StatCard({
     >
       <Ionicons name={icon} size={20} color={color} />
 
-      <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 8 }}>
+      {/* LABEL */}
+      <Text
+        style={{
+          fontSize: 12,
+          marginTop: 8,
+          color: colors.textSecondary, // ✅ FIX
+        }}
+      >
         {label}
       </Text>
 
-      {/* ✅ FIX: value always rendered inside Text */}
-      <Text style={{ fontSize: 20, fontWeight: "700", marginTop: 2 }}>
+      {/* VALUE */}
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: "700",
+          marginTop: 2,
+          color: colors.textPrimary, // ✅ FIX
+        }}
+      >
         {String(value)}
       </Text>
 
+      {/* SUBTITLE */}
       {subtitle && (
-        <Text style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
+        <Text
+          style={{
+            fontSize: 12,
+            marginTop: 2,
+            color: colors.textSecondary, // ✅ FIX
+          }}
+        >
           {subtitle}
         </Text>
       )}

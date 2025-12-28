@@ -8,8 +8,9 @@ import {
   FlatList,
   StyleSheet,
 } from "react-native";
+import { useMemo } from "react";
 import { ExerciseCatalogItem } from "../hooks/useExerciseCatalog";
-import { useTheme } from "../context/ThemeContext"; // ✅ added
+import { useTheme } from "../context/ThemeContext";
 
 /* ===================== TYPES ===================== */
 
@@ -31,16 +32,59 @@ type Props = {
 /* ===================== COMPONENT ===================== */
 
 export function ExercisePickerModal(props: Props) {
-  const { colors } = useTheme(); // ✅ added
+  const { colors } = useTheme();
+
+  /* ===================== FILTER LOGIC (🔥 FIX) ===================== */
+
+  const filteredData = useMemo(() => {
+    const query = props.search.toLowerCase().trim();
+
+    return props.data.filter((ex) => {
+      if (
+        query &&
+        !(
+          ex.name.toLowerCase().includes(query) ||
+          ex.target.toLowerCase().includes(query) ||
+          ex.equipment.toLowerCase().includes(query)
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        props.muscleFilter &&
+        ex.target !== props.muscleFilter
+      ) {
+        return false;
+      }
+
+      if (
+        props.equipmentFilter &&
+        ex.equipment !== props.equipmentFilter
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    props.data,
+    props.search,
+    props.muscleFilter,
+    props.equipmentFilter,
+  ]);
+
+  /* ===================== UI ===================== */
 
   return (
     <Modal visible={props.visible} animationType="slide">
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {/* HEADER */}
         <View style={{ padding: 16 }}>
           <Text
             style={[
               styles.modalTitle,
-              { color: colors.textPrimary }, // ✅
+              { color: colors.textPrimary },
             ]}
           >
             Select Exercise
@@ -52,96 +96,145 @@ export function ExercisePickerModal(props: Props) {
             onChangeText={props.setSearch}
             style={[
               styles.searchInput,
-              { backgroundColor: colors.background, color: colors.textPrimary }, // ✅
+              {
+                backgroundColor: colors.card,
+                color: colors.textPrimary,
+              },
             ]}
-            placeholderTextColor={colors.textSecondary} // ✅
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {props.availableMuscles.map((m) => (
-              <Pressable
-                key={m}
-                onPress={() =>
-                  props.setMuscleFilter(
-                    props.muscleFilter === m ? null : m
-                  )
-                }
-                style={[
-                  styles.chip,
-                  { backgroundColor: colors.border }, // ✅
-                  props.muscleFilter === m && {
-                    backgroundColor: colors.accent, // ✅
-                  },
-                ]}
-              >
-                <Text style={{ color: colors.textPrimary }}>
-                  {m}
-                </Text>
-              </Pressable>
-            ))}
+          {/* FILTER CHIPS */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          >
+            {props.availableMuscles.map((m) => {
+              const selected = props.muscleFilter === m;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() =>
+                    props.setMuscleFilter(
+                      selected ? null : m
+                    )
+                  }
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: selected
+                        ? colors.accent
+                        : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: selected
+                        ? "#fff"
+                        : colors.textPrimary,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {m}
+                  </Text>
+                </Pressable>
+              );
+            })}
 
-            {props.availableEquipment.map((e) => (
-              <Pressable
-                key={e}
-                onPress={() =>
-                  props.setEquipmentFilter(
-                    props.equipmentFilter === e ? null : e
-                  )
-                }
-                style={[
-                  styles.chip,
-                  { backgroundColor: colors.border }, // ✅
-                  props.equipmentFilter === e && {
-                    backgroundColor: colors.accent, // ✅
-                  },
-                ]}
-              >
-                <Text style={{ color: colors.textPrimary }}>
-                  {e}
-                </Text>
-              </Pressable>
-            ))}
+            {props.availableEquipment.map((e) => {
+              const selected =
+                props.equipmentFilter === e;
+              return (
+                <Pressable
+                  key={e}
+                  onPress={() =>
+                    props.setEquipmentFilter(
+                      selected ? null : e
+                    )
+                  }
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: selected
+                        ? colors.accent
+                        : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: selected
+                        ? "#fff"
+                        : colors.textPrimary,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {e}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
 
+        {/* LIST */}
         <FlatList
-          data={props.data}
+          data={filteredData} // 🔥 FIX
           keyExtractor={(i) => i.id}
+          style={{ backgroundColor: colors.background }}
           renderItem={({ item }) => (
             <Pressable
               style={[
                 styles.exerciseItem,
-                { borderBottomColor: colors.border }, // ✅
+                { borderBottomColor: colors.border },
               ]}
               onPress={() => props.onSelect(item.name)}
             >
-              <Text style={{ color: colors.textPrimary }}>
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontWeight: "600",
+                }}
+              >
                 {item.name}
               </Text>
               <Text
                 style={[
                   styles.exerciseMeta,
-                  { color: colors.textSecondary }, // ✅
+                  { color: colors.textSecondary },
                 ]}
               >
                 {item.target} · {item.equipment}
               </Text>
             </Pressable>
           )}
+          ListEmptyComponent={
+            <Text
+              style={{
+                textAlign: "center",
+                marginTop: 24,
+                color: colors.textSecondary,
+              }}
+            >
+              No exercises found
+            </Text>
+          }
         />
 
+        {/* FOOTER */}
         <View style={{ padding: 16 }}>
           <Pressable
             onPress={props.onClose}
             style={[
               styles.closeButton,
-              { backgroundColor: colors.border }, // ✅
+              { backgroundColor: colors.card },
             ]}
           >
             <Text
               style={[
                 styles.closeText,
-                { color: colors.textPrimary }, // ✅
+                { color: colors.textPrimary },
               ]}
             >
               Close
@@ -180,6 +273,7 @@ const styles = StyleSheet.create({
   },
   exerciseMeta: {
     fontSize: 12,
+    marginTop: 2,
   },
   closeButton: {
     padding: 14,
