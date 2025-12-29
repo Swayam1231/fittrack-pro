@@ -1,17 +1,32 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
+import { useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { auth } from "../src/firebase/firebase";
 
 export default function RootLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.replace("/(auth)/login");
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <Stack screenOptions={{ headerShown: false }}>
-          {/* Auth */}
+          {/* AUTH */}
           <Stack.Screen name="(auth)/login" />
           <Stack.Screen name="(auth)/register" />
 
-          {/* Main App */}
+          {/* MAIN APP */}
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="profile" />
           <Stack.Screen name="add-meal" />

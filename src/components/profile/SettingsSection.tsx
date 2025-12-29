@@ -1,5 +1,7 @@
 import { View, Text, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { signOut } from "firebase/auth";
+import { useRouter } from "expo-router";
 import { auth } from "../../firebase/firebase";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -66,6 +68,7 @@ function Row({ icon, label, value, danger, onPress }: RowProps) {
 /* ---------- MAIN SETTINGS ---------- */
 export default function SettingsSection() {
   const { mode, setMode, colors } = useTheme();
+  const router = useRouter();
 
   /* ---- THEME CYCLER ---- */
   const nextTheme =
@@ -74,7 +77,7 @@ export default function SettingsSection() {
   const themeLabel =
     mode === "system" ? "System" : mode === "light" ? "Light" : "Dark";
 
-  /* ---- EXPORT PLACEHOLDERS ---- */
+  /* ---- EXPORT PLACEHOLDER ---- */
   const handleExport = () => {
     Alert.alert(
       "Export Data",
@@ -82,14 +85,24 @@ export default function SettingsSection() {
     );
   };
 
-  /* ---- LOGOUT ---- */
+  /* ---- LOGOUT (FIXED) ---- */
   const handleLogout = () => {
     Alert.alert("Log out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log out",
         style: "destructive",
-        onPress: () => auth.signOut(),
+        onPress: async () => {
+          try {
+            await signOut(auth);
+
+            // 🔥 HARD RESET NAVIGATION
+            router.replace("/(auth)/login");
+          } catch (error) {
+            console.error("Logout failed:", error);
+            Alert.alert("Error", "Failed to log out. Try again.");
+          }
+        },
       },
     ]);
   };
@@ -114,7 +127,6 @@ export default function SettingsSection() {
         Settings
       </Text>
 
-      {/* THEME */}
       <Row
         icon="color-palette-outline"
         label="Theme"
@@ -122,14 +134,12 @@ export default function SettingsSection() {
         onPress={() => setMode(nextTheme)}
       />
 
-      {/* EXPORT */}
       <Row
         icon="download-outline"
         label="Export Data"
         onPress={handleExport}
       />
 
-      {/* LOGOUT */}
       <Row
         icon="log-out-outline"
         label="Logout"
