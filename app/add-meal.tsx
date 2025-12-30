@@ -22,6 +22,9 @@ import {
   FoodLibraryItem,
   loadFoodLibrary,
   searchFoods,
+  getRecentSearches,
+  saveRecentSearch,
+  clearRecentSearches,
 } from "../src/data/foodLibrary";
 
 /* ================= TYPES ================= */
@@ -139,16 +142,23 @@ export default function AddMeal() {
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<FoodLibraryItem[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selected, setSelected] = useState<FoodLibraryItem | null>(null);
   const [grams, setGrams] = useState("100");
 
   useEffect(() => {
     loadFoodLibrary();
+    getRecentSearches().then(setRecentSearches);
   }, []);
 
   const onSearch = (text: string) => {
     setQueryText(text);
     setResults(searchFoods(text));
+  };
+
+  const clearRecent = async () => {
+    await clearRecentSearches();
+    setRecentSearches([]);
   };
 
   /* ⭐ FAVORITE */
@@ -203,10 +213,18 @@ export default function AddMeal() {
   };
 
   const g = Number(grams) || 0;
-  const calories = selected ? Math.round((selected.caloriesPer100g * g) / 100) : 0;
-  const protein = selected ? Math.round((selected.proteinPer100g * g) / 100) : 0;
-  const carbs = selected ? Math.round((selected.carbsPer100g * g) / 100) : 0;
-  const fats = selected ? Math.round((selected.fatsPer100g * g) / 100) : 0;
+  const calories = selected
+    ? Math.round((selected.caloriesPer100g * g) / 100)
+    : 0;
+  const protein = selected
+    ? Math.round((selected.proteinPer100g * g) / 100)
+    : 0;
+  const carbs = selected
+    ? Math.round((selected.carbsPer100g * g) / 100)
+    : 0;
+  const fats = selected
+    ? Math.round((selected.fatsPer100g * g) / 100)
+    : 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -248,6 +266,53 @@ export default function AddMeal() {
           onChangeText={onSearch}
         />
 
+        {/* 🔍 RECENT SEARCHES */}
+        {!queryText && !selected && recentSearches.length > 0 && (
+          <View style={{ marginBottom: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <Text style={{ color: colors.textSecondary }}>
+                Recent searches
+              </Text>
+
+              <TouchableOpacity onPress={clearRecent}>
+                <Text style={{ color: colors.accent, fontSize: 12 }}>
+                  Clear
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {recentSearches.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => {
+                    setQueryText(r);
+                    setResults(searchFoods(r));
+                  }}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: 20,
+                    backgroundColor: colors.card,
+                    marginRight: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text style={{ color: colors.textPrimary, fontSize: 12 }}>
+                    {r}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {!selected &&
           results.map((f) => (
             <View
@@ -260,7 +325,10 @@ export default function AddMeal() {
               <View style={styles.row}>
                 <TouchableOpacity
                   style={styles.grow}
-                  onPress={() => setSelected(f)}
+                  onPress={() => {
+                    saveRecentSearch(queryText);
+                    setSelected(f);
+                  }}
                 >
                   <Text style={{ color: colors.textPrimary }}>{f.name}</Text>
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
@@ -293,7 +361,6 @@ export default function AddMeal() {
               {selected.name}
             </Text>
 
-            {/* 🍽 PORTION PRESETS */}
             <View style={{ flexDirection: "row", flexWrap: "wrap", marginVertical: 8 }}>
               {getPortionPresets(selected.name).map((p) => (
                 <TouchableOpacity
