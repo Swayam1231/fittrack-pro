@@ -1,10 +1,4 @@
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-} from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { auth, db } from "../../src/firebase/firebase";
@@ -20,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
-import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
+import { useTheme } from "../../src/context/ThemeContext";
 
 /* ================= HELPERS ================= */
 
@@ -53,14 +47,13 @@ const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 export default function Nutrition() {
   const router = useRouter();
   const uid = auth.currentUser?.uid;
-  const { colors } = useTheme(); // ✅ ADDED
+  const { colors } = useTheme();
 
   const [date, setDate] = useState(new Date());
   const [meals, setMeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [changingDate, setChangingDate] = useState(false);
 
-  /* 🔴 PROFILE TARGETS (SOURCE OF TRUTH) */
   const [targets, setTargets] = useState({
     calories: 0,
     protein: 0,
@@ -77,9 +70,7 @@ export default function Nutrition() {
         const snap = await getDoc(doc(db, "users", uid));
         if (!snap.exists()) return;
 
-        const data = snap.data();
-        const t = data.targets;
-
+        const t = snap.data().targets;
         if (!t) return;
 
         setTargets({
@@ -163,9 +154,7 @@ export default function Nutrition() {
 
     meals.forEach((m) => {
       const key =
-        typeof m.mealType === "string"
-          ? m.mealType.toLowerCase()
-          : "breakfast";
+        typeof m.mealType === "string" ? m.mealType.toLowerCase() : "breakfast";
 
       if (key.includes("breakfast")) map.Breakfast.push(m);
       else if (key.includes("lunch")) map.Lunch.push(m);
@@ -182,42 +171,36 @@ export default function Nutrition() {
     setMeals((p) => p.filter((m) => m.id !== id));
   };
 
-  if (loading)
-    return <Loading label="Loading nutrition..." />;
+  if (loading) return <Loading label="Loading nutrition..." />;
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]} // ✅
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <Text style={[styles.title, { color: colors.textPrimary }]}>
         Nutrition
       </Text>
 
       {/* DATE */}
-      <View
-        style={[
-          styles.dateBox,
-          { borderColor: colors.border }, // ✅
-        ]}
-      >
+      <View style={[styles.dateBox, { borderColor: colors.border }]}>
         <Pressable onPress={() => changeDate(-1)} hitSlop={12}>
-          <Text style={[styles.arrow, { color: colors.textPrimary }]}>
-            ‹
-          </Text>
+          <Text style={[styles.arrow, { color: colors.textPrimary }]}>‹</Text>
         </Pressable>
         <Text style={[styles.dateText, { color: colors.textPrimary }]}>
           {formatDate(date)}
         </Text>
         <Pressable onPress={() => changeDate(1)} hitSlop={12}>
-          <Text style={[styles.arrow, { color: colors.textPrimary }]}>
-            ›
-          </Text>
+          <Text style={[styles.arrow, { color: colors.textPrimary }]}>›</Text>
         </Pressable>
       </View>
 
       {/* MACROS */}
       <View style={styles.macroGrid}>
-        <Macro title="Calories" value={totals.calories} goal={targets.calories} />
+        <Macro
+          title="Calories"
+          value={totals.calories}
+          goal={targets.calories}
+        />
         <Macro title="Protein" value={totals.protein} goal={targets.protein} />
         <Macro title="Carbs" value={totals.carbs} goal={targets.carbs} />
         <Macro title="Fats" value={totals.fats} goal={targets.fats} />
@@ -228,7 +211,9 @@ export default function Nutrition() {
         {MEAL_TYPES.map((type) => (
           <View key={type} style={{ marginBottom: 16 }}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textPrimary }]}
+              >
                 {type}
               </Text>
               <Pressable
@@ -242,18 +227,32 @@ export default function Nutrition() {
                   })
                 }
               >
-                <Text style={[styles.add, { color: colors.accent }]}>
-                  ＋
-                </Text>
+                <Text style={[styles.add, { color: colors.accent }]}>＋</Text>
               </Pressable>
             </View>
 
             {mealsByType[type].map((m) => (
-              <Card key={m.id} style={{ marginBottom: 8 }}>
+              <Card
+                key={m.id}
+                style={{ marginBottom: 8, backgroundColor: colors.card }}
+              >
                 <View style={styles.row}>
-                  <Text style={{ fontWeight: "600", color: colors.textPrimary }}>
-                    {m.name}
-                  </Text>
+                  <View>
+                    <Text
+                      style={{ fontWeight: "600", color: colors.textPrimary }}
+                    >
+                      {m.foodName}
+                    </Text>
+
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      {m.grams} g • {m.calories} kcal
+                    </Text>
+
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      P {m.protein}g | C {m.carbs}g | F {m.fats}g
+                    </Text>
+                  </View>
+
                   <Pressable onPress={() => deleteMeal(m.id)}>
                     <Text style={[styles.delete, { color: colors.danger }]}>
                       🗑️
@@ -280,7 +279,7 @@ function Macro({
   value: number;
   goal: number;
 }) {
-  const { colors } = useTheme(); // ✅ ADDED
+  const { colors } = useTheme();
 
   const pct = goal ? Math.min((value / goal) * 100, 100) : 0;
 
@@ -292,16 +291,11 @@ function Macro({
       <Text style={[styles.macroValue, { color: colors.textPrimary }]}>
         {value}/{goal}
       </Text>
-      <View
-        style={[
-          styles.barBg,
-          { backgroundColor: colors.border }, // ✅
-        ]}
-      >
+      <View style={[styles.barBg, { backgroundColor: colors.border }]}>
         <View
           style={[
             styles.barFill,
-            { width: `${pct}%`, backgroundColor: colors.accent }, // ✅
+            { width: `${pct}%`, backgroundColor: colors.accent },
           ]}
         />
       </View>
@@ -321,7 +315,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 12,
     marginVertical: 16,
   },
@@ -335,17 +328,15 @@ const styles = StyleSheet.create({
     rowGap: 12,
   },
   macroCard: { width: "48%" },
-  macroTitle: { fontSize: 12, color: "#6B7280" },
+  macroTitle: { fontSize: 12 },
   macroValue: { fontWeight: "700", marginBottom: 6 },
 
   barBg: {
     height: 6,
-    backgroundColor: "#E5E7EB",
     borderRadius: 4,
   },
   barFill: {
     height: "100%",
-    backgroundColor: "#2563EB",
     borderRadius: 4,
   },
 
@@ -359,6 +350,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  delete: { color: "#DC2626" },
-  add: { fontSize: 18, color: "#2563EB" },
+  delete: {},
+  add: { fontSize: 18 },
 });
