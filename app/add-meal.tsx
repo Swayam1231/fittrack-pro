@@ -16,10 +16,6 @@ import {
   Timestamp,
   setDoc,
   doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
 } from "firebase/firestore";
 import { useTheme } from "../src/context/ThemeContext";
 import {
@@ -32,7 +28,6 @@ import {
 
 type RouteParams = {
   mealType?: string;
-  foodId?: string;
 };
 
 /* ================= STYLES ================= */
@@ -55,17 +50,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
+  row: { flexDirection: "row", alignItems: "center" },
   grow: { flex: 1 },
 
-  star: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
+  star: { paddingHorizontal: 14, paddingVertical: 10 },
 
   primaryButton: {
     padding: 14,
@@ -75,7 +63,6 @@ const styles = StyleSheet.create({
   },
 
   primaryText: { color: "#fff", fontWeight: "600" },
-
   link: { marginBottom: 12 },
 });
 
@@ -90,95 +77,53 @@ export default function AddMeal() {
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<FoodLibraryItem[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-
   const [selected, setSelected] = useState<FoodLibraryItem | null>(null);
   const [grams, setGrams] = useState("100");
 
-  /* ---------- LOAD FOOD LIBRARY ---------- */
   useEffect(() => {
     loadFoodLibrary();
   }, []);
 
-  /* ---------- LOAD FAVORITES ---------- */
-  useEffect(() => {
-    if (!uid) return;
-
-    const loadFavorites = async () => {
-      const snap = await getDocs(
-        query(
-          collection(db, "users", uid, "foodStats"),
-          where("favorite", "==", true)
-        )
-      );
-
-      const set = new Set<string>();
-      snap.forEach((d) => set.add(d.id));
-      setFavorites(set);
-    };
-
-    loadFavorites();
-  }, [uid]);
-
-  /* ---------- SEARCH ---------- */
   const onSearch = (text: string) => {
     setQueryText(text);
     setResults(searchFoods(text));
   };
 
-  /* ---------- LOAD LAST USED GRAMS ---------- */
-  const loadFoodStats = async (foodId: string) => {
-    if (!uid) return;
-    const snap = await getDoc(doc(db, "users", uid, "foodStats", foodId));
-    if (snap.exists() && snap.data().lastUsedGrams) {
-      setGrams(String(snap.data().lastUsedGrams));
-    }
-  };
-
-  /* ---------- TOGGLE FAVORITE (PERSIST IMMEDIATELY) ---------- */
-  const toggleFavorite = async (foodId: string) => {
+  /* ⭐ FAVORITE */
+  const toggleFavorite = async (food: FoodLibraryItem) => {
     if (!uid) return;
 
-    const isFav = favorites.has(foodId);
+    const isFav = favorites.has(food.id);
 
     await setDoc(
-      doc(db, "users", uid, "foodStats", foodId),
+      doc(db, "users", uid, "foodStats", food.id),
       {
-        favorite: !isFav, // ⭐ persist immediately
+        foodId: food.id,
+        foodName: food.name,
+        caloriesPer100g: food.caloriesPer100g,
+        proteinPer100g: food.proteinPer100g,
+        carbsPer100g: food.carbsPer100g,
+        fatsPer100g: food.fatsPer100g,
+        favorite: !isFav,
       },
       { merge: true }
     );
 
-    setFavorites((prev) => {
-      const n = new Set(prev);
-      isFav ? n.delete(foodId) : n.add(foodId);
+    setFavorites((p) => {
+      const n = new Set(p);
+      isFav ? n.delete(food.id) : n.add(food.id);
       return n;
     });
   };
 
-  /* ---------- CALCULATIONS ---------- */
-  const g = Number(grams) || 0;
-
-  const calories = selected
-    ? Math.round((selected.caloriesPer100g * g) / 100)
-    : 0;
-  const protein = selected
-    ? Math.round((selected.proteinPer100g * g) / 100)
-    : 0;
-  const carbs = selected ? Math.round((selected.carbsPer100g * g) / 100) : 0;
-  const fats = selected ? Math.round((selected.fatsPer100g * g) / 100) : 0;
-
-  /* ---------- SAVE MEAL (DO NOT TOUCH FAVORITE) ---------- */
+  /* SAVE MEAL */
   const saveMeal = async () => {
-    if (!uid || !selected || g <= 0) return;
+    if (!uid || !selected) return;
 
     await addDoc(collection(db, "users", uid, "meals"), {
       foodId: selected.id,
       foodName: selected.name,
-      grams: g,
-      calories,
-      protein,
-      carbs,
-      fats,
+      grams: Number(grams),
       mealType: params.mealType || "Breakfast",
       createdAt: Timestamp.now(),
     });
@@ -186,9 +131,8 @@ export default function AddMeal() {
     await setDoc(
       doc(db, "users", uid, "foodStats", selected.id),
       {
-        lastUsedGrams: g,
-        lastUsedAt: Timestamp.now(),
-        // ❌ DO NOT overwrite favorite
+        lastUsedGrams: Number(grams),
+        favorite: favorites.has(selected.id),
       },
       { merge: true }
     );
@@ -196,153 +140,99 @@ export default function AddMeal() {
     router.back();
   };
 
-  /* ---------- SORT RESULTS ---------- */
-  const orderedResults = [
-    ...results.filter((f) => favorites.has(f.id)),
-    ...results.filter((f) => !favorites.has(f.id)),
-  ];
-
-  /* ================= UI ================= */
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Add {params.mealType || "Meal"}
+          Add Meal
         </Text>
 
-        {/* ⭐ FAVORITES SCREEN */}
-        {!selected && (
-          <TouchableOpacity
-            onPress={() => router.push("/favorite-foods")}
-            style={styles.link}
+        <TouchableOpacity
+          onPress={() => router.push("/favorite-foods")}
+          style={styles.link}
+        >
+          <Text style={{ color: colors.accent, fontWeight: "600" }}>
+            ⭐ View Favorites
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push("/add-custom-food")}
+          style={styles.link}
+        >
+          <Text style={{ color: colors.accent }}>
+            + Add Custom Food
+          </Text>
+        </TouchableOpacity>
+
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              color: colors.textPrimary,
+            },
+          ]}
+          placeholder="Search food"
+          placeholderTextColor={colors.textSecondary}
+          value={queryText}
+          onChangeText={onSearch}
+        />
+
+        {results.map((f) => (
+          <View
+            key={f.id}
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
           >
-            <Text style={{ color: colors.accent, fontWeight: "600" }}>
-              ⭐ View Favorites
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* ➕ ADD CUSTOM FOOD (RESTORED) */}
-        {!selected && (
-          <TouchableOpacity
-            onPress={() => router.push("/add-custom-food")}
-            style={styles.link}
-          >
-            <Text style={{ color: colors.accent }}>
-              + Add Custom Food
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {!selected && (
-          <>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.textPrimary,
-                },
-              ]}
-              placeholder="Search food"
-              placeholderTextColor={colors.textSecondary}
-              value={queryText}
-              onChangeText={onSearch}
-            />
-
-            {orderedResults.map((f) => (
-              <View
-                key={f.id}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={styles.grow}
+                onPress={() => setSelected(f)}
               >
-                <View style={styles.row}>
-                  <TouchableOpacity
-                    style={styles.grow}
-                    onPress={async () => {
-                      setSelected(f);
-                      await loadFoodStats(f.id);
-                    }}
-                  >
-                    <Text style={{ color: colors.textPrimary }}>
-                      {f.name}
-                    </Text>
-                    <Text
-                      style={{
-                        color: colors.textSecondary,
-                        fontSize: 12,
-                      }}
-                    >
-                      {f.caloriesPer100g} kcal / 100g
-                    </Text>
-                  </TouchableOpacity>
+                <Text style={{ color: colors.textPrimary }}>
+                  {f.name}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {f.caloriesPer100g} kcal / 100g
+                </Text>
+              </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.star}
-                    onPress={() => toggleFavorite(f.id)}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 20,
-                        color: favorites.has(f.id)
-                          ? colors.accent
-                          : colors.textSecondary,
-                      }}
-                    >
-                      {favorites.has(f.id) ? "★" : "☆"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </>
-        )}
+              <TouchableOpacity
+                style={styles.star}
+                onPress={() => toggleFavorite(f)}
+              >
+                <Text
+                  style={{
+                    fontSize: 20,
+                    color: favorites.has(f.id)
+                      ? colors.accent
+                      : colors.textSecondary,
+                  }}
+                >
+                  {favorites.has(f.id) ? "★" : "☆"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
 
         {selected && (
-          <>
-            <Text style={{ color: colors.textPrimary, fontWeight: "700" }}>
-              {selected.name}
-            </Text>
-
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.textPrimary,
-                },
-              ]}
-              keyboardType="numeric"
-              value={grams}
-              onChangeText={setGrams}
-            />
-
-            <Text style={{ color: colors.textPrimary }}>
-              {g} g • {calories} kcal
-            </Text>
-
-            <Text style={{ color: colors.textSecondary }}>
-              Protein {protein}g | Carbs {carbs}g | Fats {fats}g
-            </Text>
-
-            <TouchableOpacity
-              onPress={saveMeal}
-              style={[
-                styles.primaryButton,
-                { backgroundColor: colors.accent },
-              ]}
-            >
-              <Text style={styles.primaryText}>Save</Text>
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            onPress={saveMeal}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: colors.accent },
+            ]}
+          >
+            <Text style={styles.primaryText}>Save</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>

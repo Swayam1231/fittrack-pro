@@ -6,7 +6,6 @@ import {
   StyleSheet,
 } from "react-native";
 import { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth, db } from "../src/firebase/firebase";
 import {
@@ -14,50 +13,39 @@ import {
   getDocs,
   query,
   where,
+  doc,
+  setDoc,
 } from "firebase/firestore";
 import { useTheme } from "../src/context/ThemeContext";
-import { FOOD_LIBRARY } from "../src/data/foodLibraryData";
 
 /* ================= TYPES ================= */
 
-/**
- * Runtime-safe food shape
- * (matches FOOD_LIBRARY exactly)
- */
-type BaseFood = {
-  id: string;
-  name: string;
+type FavoriteFood = {
+  id: string; // 🔴 Firestore document ID (REQUIRED)
+  foodName: string;
   caloriesPer100g: number;
-  proteinPer100g: number;
-  carbsPer100g: number;
-  fatsPer100g: number;
-};
-
-type FavoriteFood = BaseFood & {
+  proteinPer100g?: number;
+  carbsPer100g?: number;
+  fatsPer100g?: number;
   lastUsedGrams?: number;
 };
 
 /* ================= COMPONENT ================= */
 
 export default function FavoriteFoods() {
-  const router = useRouter();
   const { colors } = useTheme();
   const uid = auth.currentUser?.uid;
 
   const [foods, setFoods] = useState<FavoriteFood[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ---------- LOAD FAVORITES ---------- */
   useEffect(() => {
     if (!uid) return;
 
     const loadFavorites = async () => {
       setLoading(true);
 
-      // 1️⃣ Build lookup map from raw food library
-      const foodMap = new Map<string, BaseFood>();
-      FOOD_LIBRARY.forEach((f) => foodMap.set(f.id, f));
-
-      // 2️⃣ Fetch favorite food IDs
       const snap = await getDocs(
         query(
           collection(db, "users", uid, "foodStats"),
@@ -65,18 +53,11 @@ export default function FavoriteFoods() {
         )
       );
 
-      // 3️⃣ Join Firestore + Food Library
-      const favs: FavoriteFood[] = [];
-
-      snap.forEach((doc) => {
-        const food = foodMap.get(doc.id);
-        if (!food) return;
-
-        favs.push({
-          ...food,
-          lastUsedGrams: doc.data().lastUsedGrams,
-        });
-      });
+      // ✅ IMPORTANT: attach doc.id explicitly
+      const favs: FavoriteFood[] = snap.docs.map((d) => ({
+        id: d.id, // 🔑 THIS FIXES THE CRASH
+        ...(d.data() as Omit<FavoriteFood, "id">),
+      }));
 
       setFoods(favs);
       setLoading(false);
@@ -84,6 +65,23 @@ export default function FavoriteFoods() {
 
     loadFavorites();
   }, [uid]);
+
+  /* ---------- UNFAVORITE ---------- */
+  const unfavorite = async (id: string) => {
+    if (!uid || !id) return;
+
+    // Firestore update
+    await setDoc(
+      doc(db, "users", uid, "foodStats", id),
+      { favorite: false },
+      { merge: true }
+    );
+
+    // Instant UI update
+    setFoods((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  /* ================= UI ================= */
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -100,12 +98,12 @@ export default function FavoriteFoods() {
 
         {!loading && foods.length === 0 && (
           <Text style={{ color: colors.textSecondary }}>
-            No favorites yet. Tap ☆ on a food to add it.
+            No favorites yet.
           </Text>
         )}
 
         {foods.map((f) => (
-          <TouchableOpacity
+          <View
             key={f.id}
             style={[
               styles.card,
@@ -114,24 +112,41 @@ export default function FavoriteFoods() {
                 borderColor: colors.border,
               },
             ]}
-            onPress={() =>
-              router.push({
-                pathname: "/add-meal",
-                params: { foodId: f.id },
-              })
-            }
           >
-            <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>
-              {f.name}
-            </Text>
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{ color: colors.textPrimary, fontWeight: "600" }}
+                >
+                  {f.foodName}
+                </Text>
 
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-              {f.caloriesPer100g} kcal / 100g
-              {f.lastUsedGrams
-                ? ` • Last used: ${f.lastUsedGrams} g`
-                : ""}
-            </Text>
-          </TouchableOpacity>
+                <Text
+                  style={{ color: colors.textSecondary, fontSize: 12 }}
+                >
+                  {f.caloriesPer100g} kcal / 100g
+                  {f.lastUsedGrams
+                    ? ` • Last used ${f.lastUsedGrams} g`
+                    : ""}
+                </Text>
+              </View>
+
+              {/* ⭐ UNFAVORITE */}
+              <TouchableOpacity
+                onPress={() => unfavorite(f.id)}
+                style={styles.star}
+              >
+                <Text
+                  style={{
+                    fontSize: 20,
+                    color: colors.accent,
+                  }}
+                >
+                  ★
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -152,5 +167,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  star: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
 });
