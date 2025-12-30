@@ -30,6 +30,59 @@ type RouteParams = {
   mealType?: string;
 };
 
+type PortionPreset = {
+  label: string;
+  grams: number;
+};
+
+/* ================= PORTION PRESETS ================= */
+
+const PORTION_PRESETS: Record<string, PortionPreset[]> = {
+  rice: [
+    { label: "1 bowl", grams: 150 },
+    { label: "1 plate", grams: 250 },
+  ],
+  roti: [
+    { label: "1 piece", grams: 40 },
+    { label: "2 pieces", grams: 80 },
+  ],
+  paratha: [{ label: "1 piece", grams: 80 }],
+  dosa: [{ label: "1 piece", grams: 120 }],
+  idli: [{ label: "1 piece", grams: 50 }],
+  dal: [
+    { label: "1 bowl", grams: 150 },
+    { label: "1 cup", grams: 200 },
+  ],
+  curry: [
+    { label: "1 bowl", grams: 180 },
+    { label: "1 cup", grams: 220 },
+  ],
+  chicken: [{ label: "1 piece", grams: 150 }],
+  egg: [{ label: "1 piece", grams: 50 }],
+  paneer: [
+    { label: "1 serving", grams: 100 },
+    { label: "2 servings", grams: 200 },
+  ],
+  samosa: [{ label: "1 piece", grams: 100 }],
+  vada: [{ label: "1 piece", grams: 90 }],
+  momos: [{ label: "6 pieces", grams: 180 }],
+  burger: [{ label: "1 piece", grams: 180 }],
+  default: [
+    { label: "100 g", grams: 100 },
+    { label: "200 g", grams: 200 },
+  ],
+};
+
+const getPortionPresets = (foodName: string): PortionPreset[] => {
+  const name = foodName.toLowerCase();
+  for (const key of Object.keys(PORTION_PRESETS)) {
+    if (key !== "default" && name.includes(key)) {
+      return PORTION_PRESETS[key];
+    }
+  }
+  return PORTION_PRESETS.default;
+};
+
 /* ================= STYLES ================= */
 
 const styles = StyleSheet.create({
@@ -54,6 +107,15 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
 
   star: { paddingHorizontal: 14, paddingVertical: 10 },
+
+  preset: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+    marginBottom: 8,
+  },
 
   primaryButton: {
     padding: 14,
@@ -140,6 +202,12 @@ export default function AddMeal() {
     router.back();
   };
 
+  const g = Number(grams) || 0;
+  const calories = selected ? Math.round((selected.caloriesPer100g * g) / 100) : 0;
+  const protein = selected ? Math.round((selected.proteinPer100g * g) / 100) : 0;
+  const carbs = selected ? Math.round((selected.carbsPer100g * g) / 100) : 0;
+  const fats = selected ? Math.round((selected.fatsPer100g * g) / 100) : 0;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -180,59 +248,97 @@ export default function AddMeal() {
           onChangeText={onSearch}
         />
 
-        {results.map((f) => (
-          <View
-            key={f.id}
-            style={[
-              styles.card,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={styles.grow}
-                onPress={() => setSelected(f)}
-              >
-                <Text style={{ color: colors.textPrimary }}>
-                  {f.name}
-                </Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  {f.caloriesPer100g} kcal / 100g
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.star}
-                onPress={() => toggleFavorite(f)}
-              >
-                <Text
-                  style={{
-                    fontSize: 20,
-                    color: favorites.has(f.id)
-                      ? colors.accent
-                      : colors.textSecondary,
-                  }}
+        {!selected &&
+          results.map((f) => (
+            <View
+              key={f.id}
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={styles.grow}
+                  onPress={() => setSelected(f)}
                 >
-                  {favorites.has(f.id) ? "★" : "☆"}
-                </Text>
-              </TouchableOpacity>
+                  <Text style={{ color: colors.textPrimary }}>{f.name}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    {f.caloriesPer100g} kcal / 100g
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.star}
+                  onPress={() => toggleFavorite(f)}
+                >
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      color: favorites.has(f.id)
+                        ? colors.accent
+                        : colors.textSecondary,
+                    }}
+                  >
+                    {favorites.has(f.id) ? "★" : "☆"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
         {selected && (
-          <TouchableOpacity
-            onPress={saveMeal}
-            style={[
-              styles.primaryButton,
-              { backgroundColor: colors.accent },
-            ]}
-          >
-            <Text style={styles.primaryText}>Save</Text>
-          </TouchableOpacity>
+          <>
+            <Text style={{ color: colors.textPrimary, fontWeight: "700" }}>
+              {selected.name}
+            </Text>
+
+            {/* 🍽 PORTION PRESETS */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", marginVertical: 8 }}>
+              {getPortionPresets(selected.name).map((p) => (
+                <TouchableOpacity
+                  key={p.label}
+                  onPress={() => setGrams(String(p.grams))}
+                  style={[
+                    styles.preset,
+                    { borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={{ color: colors.textPrimary, fontSize: 12 }}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
+              keyboardType="numeric"
+              value={grams}
+              onChangeText={setGrams}
+            />
+
+            <Text style={{ color: colors.textPrimary }}>
+              {g} g • {calories} kcal
+            </Text>
+            <Text style={{ color: colors.textSecondary }}>
+              Protein {protein}g | Carbs {carbs}g | Fats {fats}g
+            </Text>
+
+            <TouchableOpacity
+              onPress={saveMeal}
+              style={[styles.primaryButton, { backgroundColor: colors.accent }]}
+            >
+              <Text style={styles.primaryText}>Save</Text>
+            </TouchableOpacity>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

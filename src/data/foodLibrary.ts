@@ -1,5 +1,4 @@
-import { collection, getDocs } from "firebase/firestore";
-import { db, auth } from "../firebase/firebase";
+import { FOOD_LIBRARY } from "./foodLibraryData";
 
 /* ================= TYPES ================= */
 
@@ -10,83 +9,87 @@ export type FoodLibraryItem = {
   proteinPer100g: number;
   carbsPer100g: number;
   fatsPer100g: number;
-  category: string;
-  vegetarian: boolean;
-  keywords: string[];
+
   searchText: string;
-  source: "library" | "custom";
+};
+
+/* ================= SEARCH ALIASES ================= */
+
+const SEARCH_ALIASES: Record<string, string[]> = {
+  chapati: ["roti", "chapathi"],
+  roti: ["chapati"],
+  chawal: ["rice"],
+  rice: ["chawal"],
+  dahi: ["curd", "yogurt"],
+  curd: ["dahi"],
+  anda: ["egg"],
+  egg: ["anda"],
+  chicken: ["murga"],
+  aloo: ["potato"],
+  potato: ["aloo"],
+  bhindi: ["okra"],
+  palak: ["spinach"],
+  gobhi: ["cauliflower"],
+  chole: ["chola"],
+  bhature: ["bhatura"],
+};
+
+/* ================= HELPERS ================= */
+
+const normalize = (t: string) =>
+  t.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+
+const getAlternates = (token: string): string[] => {
+  return [token, ...(SEARCH_ALIASES[token] || [])];
+};
+
+const fuzzyIncludes = (text: string, token: string) => {
+  if (text.includes(token)) return true;
+  if (token.length < 4) return false;
+
+  // simple typo tolerance
+  let hits = 0;
+  for (let i = 0; i < token.length - 2; i++) {
+    const chunk = token.slice(i, i + 3);
+    if (text.includes(chunk)) hits++;
+  }
+  return hits >= 1;
 };
 
 /* ================= CACHE ================= */
 
-let foodCache: FoodLibraryItem[] = [];
-let loaded = false;
+let CACHE: FoodLibraryItem[] = [];
+let LOADED = false;
 
-/* ================= LOADERS ================= */
+/* ================= LOAD ================= */
 
-export const loadFoodLibrary = async (): Promise<void> => {
-  if (loaded) return;
+export const loadFoodLibrary = () => {
+  if (LOADED) return;
 
-  const foods: FoodLibraryItem[] = [];
+  CACHE = FOOD_LIBRARY.map((f) => ({
+    ...f,
+    searchText: normalize(f.name),
+  }));
 
-  // 🔹 Global food library
-  const libSnap = await getDocs(collection(db, "foodLibrary"));
-  libSnap.forEach((doc) => {
-    const d = doc.data();
-    foods.push({
-      id: doc.id,
-      name: d.name,
-      caloriesPer100g: d.caloriesPer100g,
-      proteinPer100g: d.proteinPer100g,
-      carbsPer100g: d.carbsPer100g,
-      fatsPer100g: d.fatsPer100g,
-      category: d.category,
-      vegetarian: d.vegetarian,
-      keywords: d.keywords || [],
-      searchText: (
-        d.name + " " + (d.keywords || []).join(" ")
-      ).toLowerCase(),
-      source: "library",
-    });
-  });
-
-  // 🔹 User custom foods
-  const uid = auth.currentUser?.uid;
-  if (uid) {
-    const customSnap = await getDocs(
-      collection(db, "users", uid, "customFoods")
-    );
-
-    customSnap.forEach((doc) => {
-      const d = doc.data();
-      foods.push({
-        id: doc.id,
-        name: d.name,
-        caloriesPer100g: d.caloriesPer100g,
-        proteinPer100g: d.proteinPer100g,
-        carbsPer100g: d.carbsPer100g,
-        fatsPer100g: d.fatsPer100g,
-        category: "Custom",
-        vegetarian: true,
-        keywords: [],
-        searchText: d.name.toLowerCase(),
-        source: "custom",
-      });
-    });
-  }
-
-  foodCache = foods;
-  loaded = true;
+  LOADED = true;
 };
 
 /* ================= SEARCH ================= */
 
 export const searchFoods = (query: string): FoodLibraryItem[] => {
-  if (!query || query.length < 2) return [];
+  if (!LOADED) loadFoodLibrary();
+  if (!query.trim()) return CACHE;
 
-  const q = query.toLowerCase();
+  const words = normalize(query).split(" ").filter(Boolean);
 
-  return foodCache
-    .filter((f) => f.searchText.includes(q))
-    .slice(0, 20);
+  return CACHE.filter((food) => {
+    // ✅ EVERY USER WORD MUST MATCH
+    return words.every((word) => {
+      const options = getAlternates(word);
+
+      return options.some((opt) =>
+        fuzzyIncludes(food.searchText, opt)
+      );
+    });
+  });
 };
