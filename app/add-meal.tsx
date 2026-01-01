@@ -1,89 +1,35 @@
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-} from "react-native";
-import { useEffect, useState } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { auth, db } from "../src/firebase/firebase";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   addDoc,
   collection,
-  Timestamp,
-  setDoc,
   doc,
+  getDocs,
+  setDoc,
+  Timestamp,
 } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../src/context/ThemeContext";
 import {
   FoodLibraryItem,
   loadFoodLibrary,
   searchFoods,
-  getRecentSearches,
-  saveRecentSearch,
-  clearRecentSearches,
 } from "../src/data/foodLibrary";
+import { auth, db } from "../src/firebase/firebase";
 
 /* ================= TYPES ================= */
 
 type RouteParams = {
   mealType?: string;
-};
-
-type PortionPreset = {
-  label: string;
-  grams: number;
-};
-
-/* ================= PORTION PRESETS ================= */
-
-const PORTION_PRESETS: Record<string, PortionPreset[]> = {
-  rice: [
-    { label: "1 bowl", grams: 150 },
-    { label: "1 plate", grams: 250 },
-  ],
-  roti: [
-    { label: "1 piece", grams: 40 },
-    { label: "2 pieces", grams: 80 },
-  ],
-  paratha: [{ label: "1 piece", grams: 80 }],
-  dosa: [{ label: "1 piece", grams: 120 }],
-  idli: [{ label: "1 piece", grams: 50 }],
-  dal: [
-    { label: "1 bowl", grams: 150 },
-    { label: "1 cup", grams: 200 },
-  ],
-  curry: [
-    { label: "1 bowl", grams: 180 },
-    { label: "1 cup", grams: 220 },
-  ],
-  chicken: [{ label: "1 piece", grams: 150 }],
-  egg: [{ label: "1 piece", grams: 50 }],
-  paneer: [
-    { label: "1 serving", grams: 100 },
-    { label: "2 servings", grams: 200 },
-  ],
-  samosa: [{ label: "1 piece", grams: 100 }],
-  vada: [{ label: "1 piece", grams: 90 }],
-  momos: [{ label: "6 pieces", grams: 180 }],
-  burger: [{ label: "1 piece", grams: 180 }],
-  default: [
-    { label: "100 g", grams: 100 },
-    { label: "200 g", grams: 200 },
-  ],
-};
-
-const getPortionPresets = (foodName: string): PortionPreset[] => {
-  const name = foodName.toLowerCase();
-  for (const key of Object.keys(PORTION_PRESETS)) {
-    if (key !== "default" && name.includes(key)) {
-      return PORTION_PRESETS[key];
-    }
-  }
-  return PORTION_PRESETS.default;
+  scannedFood?: string; // reused later by AI flow
 };
 
 /* ================= STYLES ================= */
@@ -96,7 +42,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     padding: 12,
-    marginBottom: 12,
   },
 
   card: {
@@ -111,15 +56,6 @@ const styles = StyleSheet.create({
 
   star: { paddingHorizontal: 14, paddingVertical: 10 },
 
-  preset: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-
   primaryButton: {
     padding: 14,
     borderRadius: 12,
@@ -129,6 +65,13 @@ const styles = StyleSheet.create({
 
   primaryText: { color: "#fff", fontWeight: "600" },
   link: { marginBottom: 12 },
+
+  aiButton: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 16,
+  },
 });
 
 /* ================= COMPONENT ================= */
@@ -142,26 +85,59 @@ export default function AddMeal() {
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<FoodLibraryItem[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selected, setSelected] = useState<FoodLibraryItem | null>(null);
   const [grams, setGrams] = useState("100");
 
+  /* ================= LOAD FOOD LIBRARY ================= */
+
   useEffect(() => {
     loadFoodLibrary();
-    getRecentSearches().then(setRecentSearches);
   }, []);
+
+  /* ================= LOAD FAVORITES ================= */
+
+  useEffect(() => {
+    if (!uid) return;
+
+    const loadFavorites = async () => {
+      const snap = await getDocs(
+        collection(db, "users", uid, "foodStats")
+      );
+
+      const favs = new Set<string>();
+      snap.forEach((d) => {
+        if (d.data().favorite) favs.add(d.id);
+      });
+
+      setFavorites(favs);
+    };
+
+    loadFavorites();
+  }, [uid]);
+
+  /* ================= HANDLE AI RESULT ================= */
+
+  useEffect(() => {
+    if (!params.scannedFood) return;
+
+    try {
+      const f = JSON.parse(params.scannedFood);
+      setSelected(f as FoodLibraryItem);
+      setGrams("100");
+      setQueryText("");
+      setResults([]);
+    } catch {}
+  }, [params.scannedFood]);
+
+  /* ================= SEARCH ================= */
 
   const onSearch = (text: string) => {
     setQueryText(text);
     setResults(searchFoods(text));
   };
 
-  const clearRecent = async () => {
-    await clearRecentSearches();
-    setRecentSearches([]);
-  };
+  /* ================= FAVORITE TOGGLE ================= */
 
-  /* ⭐ FAVORITE */
   const toggleFavorite = async (food: FoodLibraryItem) => {
     if (!uid) return;
 
@@ -181,14 +157,15 @@ export default function AddMeal() {
       { merge: true }
     );
 
-    setFavorites((p) => {
-      const n = new Set(p);
+    setFavorites((prev) => {
+      const n = new Set(prev);
       isFav ? n.delete(food.id) : n.add(food.id);
       return n;
     });
   };
 
-  /* SAVE MEAL */
+  /* ================= SAVE MEAL ================= */
+
   const saveMeal = async () => {
     if (!uid || !selected) return;
 
@@ -200,31 +177,17 @@ export default function AddMeal() {
       createdAt: Timestamp.now(),
     });
 
-    await setDoc(
-      doc(db, "users", uid, "foodStats", selected.id),
-      {
-        lastUsedGrams: Number(grams),
-        favorite: favorites.has(selected.id),
-      },
-      { merge: true }
-    );
-
     router.back();
   };
+
+  /* ================= CALCULATIONS ================= */
 
   const g = Number(grams) || 0;
   const calories = selected
     ? Math.round((selected.caloriesPer100g * g) / 100)
     : 0;
-  const protein = selected
-    ? Math.round((selected.proteinPer100g * g) / 100)
-    : 0;
-  const carbs = selected
-    ? Math.round((selected.carbsPer100g * g) / 100)
-    : 0;
-  const fats = selected
-    ? Math.round((selected.fatsPer100g * g) / 100)
-    : 0;
+
+  /* ================= UI ================= */
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -233,11 +196,25 @@ export default function AddMeal() {
           Add Meal
         </Text>
 
+        {/* 🔥 AI SCAN MEAL */}
+        <TouchableOpacity
+          onPress={() => router.push("../ai-scan-meal")}
+          style={[
+            styles.aiButton,
+            { backgroundColor: colors.accent },
+          ]}
+        >
+          <Text style={styles.primaryText}>
+            📸 AI Scan Meal
+          </Text>
+        </TouchableOpacity>
+
+        {/* FAVORITES + CUSTOM */}
         <TouchableOpacity
           onPress={() => router.push("/favorite-foods")}
           style={styles.link}
         >
-          <Text style={{ color: colors.accent, fontWeight: "600" }}>
+          <Text style={{ color: colors.accent }}>
             ⭐ View Favorites
           </Text>
         </TouchableOpacity>
@@ -251,6 +228,7 @@ export default function AddMeal() {
           </Text>
         </TouchableOpacity>
 
+        {/* SEARCH */}
         <TextInput
           style={[
             styles.input,
@@ -266,53 +244,6 @@ export default function AddMeal() {
           onChangeText={onSearch}
         />
 
-        {/* 🔍 RECENT SEARCHES */}
-        {!queryText && !selected && recentSearches.length > 0 && (
-          <View style={{ marginBottom: 12 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginBottom: 6,
-              }}
-            >
-              <Text style={{ color: colors.textSecondary }}>
-                Recent searches
-              </Text>
-
-              <TouchableOpacity onPress={clearRecent}>
-                <Text style={{ color: colors.accent, fontSize: 12 }}>
-                  Clear
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {recentSearches.map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  onPress={() => {
-                    setQueryText(r);
-                    setResults(searchFoods(r));
-                  }}
-                  style={{
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 20,
-                    backgroundColor: colors.card,
-                    marginRight: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <Text style={{ color: colors.textPrimary, fontSize: 12 }}>
-                    {r}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
         {!selected &&
           results.map((f) => (
             <View
@@ -325,13 +256,12 @@ export default function AddMeal() {
               <View style={styles.row}>
                 <TouchableOpacity
                   style={styles.grow}
-                  onPress={() => {
-                    saveRecentSearch(queryText);
-                    setSelected(f);
-                  }}
+                  onPress={() => setSelected(f)}
                 >
-                  <Text style={{ color: colors.textPrimary }}>{f.name}</Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  <Text style={{ color: colors.textPrimary }}>
+                    {f.name}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary }}>
                     {f.caloriesPer100g} kcal / 100g
                   </Text>
                 </TouchableOpacity>
@@ -340,14 +270,7 @@ export default function AddMeal() {
                   style={styles.star}
                   onPress={() => toggleFavorite(f)}
                 >
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      color: favorites.has(f.id)
-                        ? colors.accent
-                        : colors.textSecondary,
-                    }}
-                  >
+                  <Text style={{ fontSize: 20 }}>
                     {favorites.has(f.id) ? "★" : "☆"}
                   </Text>
                 </TouchableOpacity>
@@ -357,35 +280,14 @@ export default function AddMeal() {
 
         {selected && (
           <>
-            <Text style={{ color: colors.textPrimary, fontWeight: "700" }}>
+            <Text style={{ color: colors.textPrimary }}>
               {selected.name}
             </Text>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap", marginVertical: 8 }}>
-              {getPortionPresets(selected.name).map((p) => (
-                <TouchableOpacity
-                  key={p.label}
-                  onPress={() => setGrams(String(p.grams))}
-                  style={[
-                    styles.preset,
-                    { borderColor: colors.border },
-                  ]}
-                >
-                  <Text style={{ color: colors.textPrimary, fontSize: 12 }}>
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
 
             <TextInput
               style={[
                 styles.input,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.textPrimary,
-                },
+                { backgroundColor: colors.card },
               ]}
               keyboardType="numeric"
               value={grams}
@@ -393,15 +295,15 @@ export default function AddMeal() {
             />
 
             <Text style={{ color: colors.textPrimary }}>
-              {g} g • {calories} kcal
-            </Text>
-            <Text style={{ color: colors.textSecondary }}>
-              Protein {protein}g | Carbs {carbs}g | Fats {fats}g
+              {calories} kcal
             </Text>
 
             <TouchableOpacity
               onPress={saveMeal}
-              style={[styles.primaryButton, { backgroundColor: colors.accent }]}
+              style={[
+                styles.primaryButton,
+                { backgroundColor: colors.accent },
+              ]}
             >
               <Text style={styles.primaryText}>Save</Text>
             </TouchableOpacity>
