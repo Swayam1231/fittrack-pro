@@ -31,6 +31,7 @@ import {
 
 type RouteParams = {
   mealType?: string;
+  scannedFood?: string; // 🔥 AI result comes here
 };
 
 type PortionPreset = {
@@ -129,6 +130,13 @@ const styles = StyleSheet.create({
 
   primaryText: { color: "#fff", fontWeight: "600" },
   link: { marginBottom: 12 },
+
+  aiButton: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 12,
+  },
 });
 
 /* ================= COMPONENT ================= */
@@ -150,6 +158,18 @@ export default function AddMeal() {
     loadFoodLibrary();
     getRecentSearches().then(setRecentSearches);
   }, []);
+
+  /* 🔥 RECEIVE AI RESULT */
+  useEffect(() => {
+    if (!params.scannedFood) return;
+    try {
+      const f = JSON.parse(params.scannedFood);
+      setSelected(f as FoodLibraryItem);
+      setGrams("100");
+      setQueryText("");
+      setResults([]);
+    } catch {}
+  }, [params.scannedFood]);
 
   const onSearch = (text: string) => {
     setQueryText(text);
@@ -232,6 +252,14 @@ export default function AddMeal() {
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           Add Meal
         </Text>
+
+        {/* 🔥 AI SCAN MEAL */}
+        <TouchableOpacity
+          onPress={() => router.push("../ai-scan-meal")}
+          style={[styles.aiButton, { backgroundColor: colors.accent }]}
+        >
+          <Text style={styles.primaryText}>📸 AI Scan Meal</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => router.push("/favorite-foods")}
