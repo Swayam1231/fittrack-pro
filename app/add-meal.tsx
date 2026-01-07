@@ -254,12 +254,12 @@ export default function AddMeal() {
         </Text>
 
         {/* 🔥 AI SCAN MEAL */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={() => router.push("../ai-scan-meal")}
           style={[styles.aiButton, { backgroundColor: colors.accent }]}
         >
           <Text style={styles.primaryText}>📸 AI Scan Meal</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           onPress={() => router.push("/favorite-foods")}
