@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 
@@ -26,7 +26,9 @@ export default function AIScanMeal() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text>Camera permission required</Text>
-        <TouchableOpacity onPress={requestPermission}><Text>Allow</Text></TouchableOpacity>
+        <TouchableOpacity onPress={requestPermission}>
+          <Text>Allow</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -36,7 +38,12 @@ export default function AIScanMeal() {
       <View style={{ flex: 1 }}>
         <Image source={{ uri: photoUri }} style={{ flex: 1 }} />
         <TouchableOpacity
-          onPress={() => router.push({ pathname: "../ai-confirm-meal", params: { imageUri: photoUri } })}
+          onPress={() =>
+            router.push({
+              pathname: "/ai-confirm-meal",
+              params: { imageUri: photoUri },
+            })
+          }
         >
           <Text style={{ textAlign: "center", padding: 20 }}>Use Photo</Text>
         </TouchableOpacity>

@@ -1,10 +1,9 @@
 import { View, Text, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import * as FileSystem from "expo-file-system";
+import { classifyFood } from "../src/ai/foodClassifier";
+import { matchFoodLabel } from "../src/ai/foodMatcher";
 import { FoodLibraryItem } from "../src/data/foodLibrary";
-
-const AI_ENDPOINT = "https://us-central1-YOUR_PROJECT.cloudfunctions.net/aiFoodDetect";
 
 export default function AIConfirmMeal() {
   const router = useRouter();
@@ -20,20 +19,28 @@ export default function AIConfirmMeal() {
     const runAI = async () => {
       try {
         setLoading(true);
-        const base64 = await FileSystem.readAsStringAsync(params.imageUri!, { encoding: "base64" });
 
+        const labels = await classifyFood(params.imageUri!);
 
-        const res = await fetch(AI_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64 }),
-        });
+        if (!labels.length) {
+          Alert.alert("Could not recognize food");
+          return;
+        }
 
-        const data = await res.json();
-        setFoodName(data.name || "");
-        setCalories(String(data.caloriesPer100g || ""));
-      } catch {
-        Alert.alert("AI failed");
+        for (const l of labels) {
+          const match = matchFoodLabel(l.label);
+          if (match) {
+            setFoodName(match.name);
+            setCalories(String(match.caloriesPer100g));
+            return;
+          }
+        }
+
+        // fallback
+        setFoodName(labels[0].label);
+        setCalories("");
+      } catch (e) {
+        Alert.alert("On-device AI failed");
       } finally {
         setLoading(false);
       }
@@ -50,17 +57,15 @@ export default function AIConfirmMeal() {
 
     const normalizedName = foodName.trim();
 
-const food: FoodLibraryItem = {
-  id: `ai_${Date.now()}`,
-  name: normalizedName,
-  searchText: normalizedName.toLowerCase(), // ✅ REQUIRED FIELD
-  caloriesPer100g: Number(calories),
-  proteinPer100g: 0,
-  carbsPer100g: 0,
-  fatsPer100g: 0,
-};
-
-
+    const food: FoodLibraryItem = {
+      id: `ai_${Date.now()}`,
+      name: normalizedName,
+      searchText: normalizedName.toLowerCase(),
+      caloriesPer100g: Number(calories),
+      proteinPer100g: 0,
+      carbsPer100g: 0,
+      fatsPer100g: 0,
+    };
 
     router.replace({
       pathname: "/add-meal",

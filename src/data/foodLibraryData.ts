@@ -1,4 +1,7 @@
-export const FOOD_LIBRARY = [
+
+import { FoodLibraryItem } from "./foodLibrary";
+
+ const RAW_FOOD_LIBRARY = [
   // 🍚 Staples & Grains
   { id: "rice_white", name: "White Rice (Cooked)", caloriesPer100g: 130, proteinPer100g: 2.7, carbsPer100g: 28, fatsPer100g: 0.3 },
   { id: "rice_brown", name: "Brown Rice (Cooked)", caloriesPer100g: 112, proteinPer100g: 2.3, carbsPer100g: 23, fatsPer100g: 0.8 },
@@ -122,3 +125,8 @@ export const FOOD_LIBRARY = [
   { id: "uttapam", name: "Uttapam", caloriesPer100g: 170, proteinPer100g: 4, carbsPer100g: 26, fatsPer100g: 5 },
   { id: "medu_vada", name: "Medu Vada", caloriesPer100g: 230, proteinPer100g: 7, carbsPer100g: 25, fatsPer100g: 11 },
 ];
+
+export const FOOD_LIBRARY: FoodLibraryItem[] = RAW_FOOD_LIBRARY.map((f) => ({
+  ...f,
+  searchText: f.name.toLowerCase(),
+}));
