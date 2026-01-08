@@ -10,13 +10,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth, db } from "../src/firebase/firebase";
-import {
-  addDoc,
-  collection,
-  Timestamp,
-  setDoc,
-  doc,
-} from "firebase/firestore";
+import { addDoc, collection, Timestamp, setDoc, doc } from "firebase/firestore";
 import { useTheme } from "../src/context/ThemeContext";
 import {
   FoodLibraryItem,
@@ -212,11 +206,22 @@ export default function AddMeal() {
   const saveMeal = async () => {
     if (!uid || !selected) return;
 
+    const g = Number(grams) || 0;
+
+    const calories = Math.round((selected.caloriesPer100g * g) / 100);
+    const protein = Math.round((selected.proteinPer100g * g) / 100);
+    const carbs = Math.round((selected.carbsPer100g * g) / 100);
+    const fats = Math.round((selected.fatsPer100g * g) / 100);
+
     await addDoc(collection(db, "users", uid, "meals"), {
       foodId: selected.id,
       foodName: selected.name,
-      grams: Number(grams),
+      grams: g,
       mealType: params.mealType || "Breakfast",
+      calories,
+      protein,
+      carbs,
+      fats,
       createdAt: Timestamp.now(),
     });
 
@@ -239,12 +244,8 @@ export default function AddMeal() {
   const protein = selected
     ? Math.round((selected.proteinPer100g * g) / 100)
     : 0;
-  const carbs = selected
-    ? Math.round((selected.carbsPer100g * g) / 100)
-    : 0;
-  const fats = selected
-    ? Math.round((selected.fatsPer100g * g) / 100)
-    : 0;
+  const carbs = selected ? Math.round((selected.carbsPer100g * g) / 100) : 0;
+  const fats = selected ? Math.round((selected.fatsPer100g * g) / 100) : 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -254,12 +255,12 @@ export default function AddMeal() {
         </Text>
 
         {/* 🔥 AI SCAN MEAL */}
-        {/* <TouchableOpacity
-          onPress={() => router.push("../ai-scan-meal")}
+        <TouchableOpacity
+          onPress={() => router.push("/ai-scan-meal")}
           style={[styles.aiButton, { backgroundColor: colors.accent }]}
         >
           <Text style={styles.primaryText}>📸 AI Scan Meal</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => router.push("/favorite-foods")}
@@ -274,9 +275,7 @@ export default function AddMeal() {
           onPress={() => router.push("/add-custom-food")}
           style={styles.link}
         >
-          <Text style={{ color: colors.accent }}>
-            + Add Custom Food
-          </Text>
+          <Text style={{ color: colors.accent }}>+ Add Custom Food</Text>
         </TouchableOpacity>
 
         <TextInput
@@ -389,15 +388,18 @@ export default function AddMeal() {
               {selected.name}
             </Text>
 
-            <View style={{ flexDirection: "row", flexWrap: "wrap", marginVertical: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                marginVertical: 8,
+              }}
+            >
               {getPortionPresets(selected.name).map((p) => (
                 <TouchableOpacity
                   key={p.label}
                   onPress={() => setGrams(String(p.grams))}
-                  style={[
-                    styles.preset,
-                    { borderColor: colors.border },
-                  ]}
+                  style={[styles.preset, { borderColor: colors.border }]}
                 >
                   <Text style={{ color: colors.textPrimary, fontSize: 12 }}>
                     {p.label}
