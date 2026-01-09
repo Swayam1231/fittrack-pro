@@ -39,14 +39,24 @@ export function ExerciseCard({
           {exercise.name || "Select exercise"}
         </Text>
 
-        <Pressable onPress={onDeleteExercise}>
+        {/* ✅ IMPROVED DELETE BUTTON */}
+        <Pressable
+          onPress={onDeleteExercise}
+          style={[
+            styles.deleteButton,
+            {
+              backgroundColor: colors.danger + "22", // subtle red background
+            },
+          ]}
+        >
           <Text
-            style={[
-              styles.deleteText,
-              { color: colors.danger }, // ✅
-            ]}
+            style={{
+              color: colors.danger,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
           >
-            Delete
+            🗑
           </Text>
         </Pressable>
       </View>
@@ -121,9 +131,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 15,
   },
-  deleteText: {
-    fontWeight: "600",
+
+  /* ✅ NEW STYLE FOR DELETE BUTTON */
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
+
   setRow: {
     flexDirection: "row",
     alignItems: "center",
