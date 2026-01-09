@@ -4,6 +4,8 @@ import {
   Pressable,
   Modal,
   ScrollView,
+  StatusBar,
+  Platform,
 } from "react-native";
 import { useState, useEffect } from "react";
 import { auth, db } from "../../firebase/firebase";
@@ -84,15 +86,15 @@ export default function EditTrainingPreferencesModal({
         padding: 12,
         borderRadius: 12,
         backgroundColor: selected
-          ? colors.card    // ✅ (was #EEF2FF)
-          : colors.background, // ✅ (was #F9FAFB)
+          ? colors.card
+          : colors.background,
         marginBottom: 8,
       }}
     >
       <Text
         style={{
           fontWeight: selected ? "600" : "400",
-          color: colors.textPrimary, // ✅
+          color: colors.textPrimary,
         }}
       >
         {label}
@@ -105,7 +107,9 @@ export default function EditTrainingPreferencesModal({
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          backgroundColor: colors.background, // ✅
+          paddingTop:
+            (Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0) + 16,
+          backgroundColor: colors.background,
         }}
       >
         <Text
@@ -113,7 +117,7 @@ export default function EditTrainingPreferencesModal({
             fontSize: 18,
             fontWeight: "700",
             marginBottom: 16,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Training Preferences
@@ -123,7 +127,7 @@ export default function EditTrainingPreferencesModal({
           style={{
             fontWeight: "600",
             marginBottom: 8,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Training Type
@@ -142,7 +146,7 @@ export default function EditTrainingPreferencesModal({
             fontWeight: "600",
             marginTop: 16,
             marginBottom: 8,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Workout Frequency
@@ -161,7 +165,7 @@ export default function EditTrainingPreferencesModal({
             fontWeight: "600",
             marginTop: 16,
             marginBottom: 8,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Preferred Split
@@ -180,7 +184,7 @@ export default function EditTrainingPreferencesModal({
             fontWeight: "600",
             marginTop: 16,
             marginBottom: 8,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Equipment
@@ -199,7 +203,7 @@ export default function EditTrainingPreferencesModal({
             fontWeight: "600",
             marginTop: 16,
             marginBottom: 8,
-            color: colors.textPrimary, // ✅
+            color: colors.textPrimary,
           }}
         >
           Cardio Preference
@@ -216,7 +220,7 @@ export default function EditTrainingPreferencesModal({
         <Pressable
           onPress={savePrefs}
           style={{
-            backgroundColor: colors.accent, // ✅
+            backgroundColor: colors.accent,
             padding: 16,
             borderRadius: 12,
             alignItems: "center",
@@ -232,7 +236,7 @@ export default function EditTrainingPreferencesModal({
           <Text
             style={{
               textAlign: "center",
-              color: colors.textSecondary, // ✅
+              color: colors.textSecondary,
             }}
           >
             Cancel
