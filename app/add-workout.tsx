@@ -43,30 +43,50 @@ const LAST_SET_KEY = "exercise_last_sets";
 const normalize = (t: string) =>
   t.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
 
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(m)}:${pad(s)}`;
+}
+
 /* ===================== SCREEN ===================== */
 
 export default function AddWorkout() {
   const router = useRouter();
   const user = auth.currentUser;
-  const { exercises: catalog } = useExerciseCatalog();
   const { colors } = useTheme();
+
+  /* ---------- EXERCISE API ---------- */
+
+  const {
+    exercises: catalog,
+    loadMore,
+    search, // 🔥 API search function
+    loading: catalogLoading,
+  } = useExerciseCatalog();
 
   /* ---------- STATE ---------- */
 
   const [workoutName, setWorkoutName] = useState("");
-  const [duration, setDuration] = useState("");
   const [userWeight, setUserWeight] = useState(0);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [search, setSearch] = useState("");
+
+  const [searchText, setSearchText] = useState(""); // 🔥 UI search text
 
   const [lastSets, setLastSets] = useState<LastSetMap>({});
 
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null);
   const [equipmentFilter, setEquipmentFilter] = useState<string | null>(null);
 
-  /* ---------- LOAD DATA ---------- */
+  /* ---------- TIMER STATE ---------- */
+
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  /* ---------- LOAD USER DATA ---------- */
 
   useEffect(() => {
     if (!user) return;
@@ -82,32 +102,59 @@ export default function AddWorkout() {
     });
   }, [user]);
 
+  /* ---------- LOAD INITIAL EXERCISES ---------- */
+
+  useEffect(() => {
+    // initial load
+    search({});
+  }, [search]);
+
+  /* ---------- TIMER TICK ---------- */
+
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const id = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [isRunning]);
+
+  const startWorkout = () => {
+    if (isRunning) return;
+    setElapsedSeconds(0);
+    setIsRunning(true);
+  };
+
+  const stopWorkout = () => {
+    setIsRunning(false);
+  };
+
   /* ===================== CALORIES ===================== */
 
   const caloriesBurned = useMemo(() => {
-  if (!user || !duration || userWeight <= 0) return 0;
+    if (!user || userWeight <= 0 || elapsedSeconds <= 0) return 0;
 
-  const durationMinutes = Number(duration);
-  if (durationMinutes <= 0) return 0;
+    const durationMinutes = elapsedSeconds / 60;
 
-  // Base MET for strength training
-  let met = 5.0;
+    // Base MET for strength training
+    let met = 5.0;
 
-  // Slightly scale MET based on workout density
-  const totalSets = exercises.reduce(
-    (sum, ex) => sum + ex.sets.length,
-    0
-  );
+    // Scale MET based on workout density
+    const totalSets = exercises.reduce(
+      (sum, ex) => sum + ex.sets.length,
+      0
+    );
 
-  if (totalSets >= 20) met = 6.0;
-  else if (totalSets >= 12) met = 5.5;
+    if (totalSets >= 20) met = 6.0;
+    else if (totalSets >= 12) met = 5.5;
 
-  const calories =
-    met * userWeight * (durationMinutes / 60);
+    const calories =
+      met * userWeight * (durationMinutes / 60);
 
-  return Math.round(calories);
-}, [user, duration, userWeight, exercises]);
-
+    return Math.round(calories);
+  }, [user, userWeight, elapsedSeconds, exercises]);
 
   /* ===================== ACTIONS ===================== */
 
@@ -130,13 +177,22 @@ export default function AddWorkout() {
   const saveWorkout = async () => {
     if (!user) return;
 
-    if (!workoutName || !duration || exercises.length === 0) {
+    if (!workoutName || exercises.length === 0) {
       return Alert.alert("Incomplete workout");
     }
 
+    if (elapsedSeconds <= 0) {
+      return Alert.alert("Please start and finish the workout timer.");
+    }
+
+    const durationMinutes = Math.max(
+      1,
+      Math.round(elapsedSeconds / 60)
+    );
+
     await addDoc(collection(db, "users", user.uid, "workouts"), {
       name: workoutName,
-      duration: Number(duration),
+      duration: durationMinutes,
       caloriesBurned,
       createdAt: Timestamp.now(),
       exercises,
@@ -168,16 +224,45 @@ export default function AddWorkout() {
             placeholderTextColor={colors.textSecondary}
           />
 
+          {/* ---------- TIMER ---------- */}
           <Text style={{ marginTop: 12, color: colors.textSecondary }}>
-            Duration (minutes)
+            Workout Timer
           </Text>
-          <TextInput
-            keyboardType="numeric"
-            value={duration}
-            onChangeText={setDuration}
-            style={{ color: colors.textPrimary }}
-            placeholderTextColor={colors.textSecondary}
-          />
+
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "700",
+                color: colors.textPrimary,
+              }}
+            >
+              {formatTime(elapsedSeconds)}
+            </Text>
+
+            <Pressable
+              onPress={isRunning ? stopWorkout : startWorkout}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: isRunning
+                  ? colors.danger
+                  : colors.accent,
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "600" }}>
+                {isRunning ? "Stop" : "Start"}
+              </Text>
+            </Pressable>
+          </View>
         </Card>
 
         {/* ---------- ADD EXERCISE ---------- */}
@@ -251,20 +336,47 @@ export default function AddWorkout() {
         </Pressable>
       </ScrollView>
 
-      {/* ---------- EXERCISE PICKER MODAL (FIXED PROPS) ---------- */}
+      {/* ---------- EXERCISE PICKER MODAL ---------- */}
       <ExercisePickerModal
         visible={pickerVisible}
-        search={search}
-        setSearch={setSearch}
+        search={searchText}
+        setSearch={(t) => {
+          setSearchText(t);
+          search({
+            search: t,
+            muscle: muscleFilter,
+            equipment: equipmentFilter,
+          });
+        }}
         availableMuscles={[...new Set(catalog.map((c) => c.target))]}
         availableEquipment={[...new Set(catalog.map((c) => c.equipment))]}
         muscleFilter={muscleFilter}
         equipmentFilter={equipmentFilter}
-        setMuscleFilter={setMuscleFilter}
-        setEquipmentFilter={setEquipmentFilter}
-        data={catalog.filter((c) =>
-          normalize(c.name).includes(normalize(search))
-        )}
+        setMuscleFilter={(m) => {
+          setMuscleFilter(m);
+          search({
+            search: searchText,
+            muscle: m,
+            equipment: equipmentFilter,
+          });
+        }}
+        setEquipmentFilter={(e) => {
+          setEquipmentFilter(e);
+          search({
+            search: searchText,
+            muscle: muscleFilter,
+            equipment: e,
+          });
+        }}
+        data={catalog}
+        loading={catalogLoading}
+        onLoadMore={() =>
+          loadMore({
+            search: searchText,
+            muscle: muscleFilter,
+            equipment: equipmentFilter,
+          })
+        }
         onSelect={(name) => {
           addExerciseWithMemory(name);
           setPickerVisible(false);

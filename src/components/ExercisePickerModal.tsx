@@ -8,9 +8,8 @@ import {
   FlatList,
   StyleSheet,
 } from "react-native";
-import { useMemo } from "react";
-import { ExerciseCatalogItem } from "../hooks/useExerciseCatalog";
 import { useTheme } from "../context/ThemeContext";
+import { ExerciseCatalogItem } from "../hooks/useExerciseCatalog";
 
 /* ===================== TYPES ===================== */
 
@@ -25,6 +24,8 @@ type Props = {
   setMuscleFilter: (v: string | null) => void;
   setEquipmentFilter: (v: string | null) => void;
   data: ExerciseCatalogItem[];
+  loading: boolean;
+  onLoadMore: () => void;
   onSelect: (name: string) => void;
   onClose: () => void;
 };
@@ -34,59 +35,12 @@ type Props = {
 export function ExercisePickerModal(props: Props) {
   const { colors } = useTheme();
 
-  /* ===================== FILTER LOGIC (🔥 FIX) ===================== */
-
-  const filteredData = useMemo(() => {
-    const query = props.search.toLowerCase().trim();
-
-    return props.data.filter((ex) => {
-      if (
-        query &&
-        !(
-          ex.name.toLowerCase().includes(query) ||
-          ex.target.toLowerCase().includes(query) ||
-          ex.equipment.toLowerCase().includes(query)
-        )
-      ) {
-        return false;
-      }
-
-      if (
-        props.muscleFilter &&
-        ex.target !== props.muscleFilter
-      ) {
-        return false;
-      }
-
-      if (
-        props.equipmentFilter &&
-        ex.equipment !== props.equipmentFilter
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    props.data,
-    props.search,
-    props.muscleFilter,
-    props.equipmentFilter,
-  ]);
-
-  /* ===================== UI ===================== */
-
   return (
     <Modal visible={props.visible} animationType="slide">
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* HEADER */}
         <View style={{ padding: 16 }}>
-          <Text
-            style={[
-              styles.modalTitle,
-              { color: colors.textPrimary },
-            ]}
-          >
+          <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
             Select Exercise
           </Text>
 
@@ -96,43 +50,29 @@ export function ExercisePickerModal(props: Props) {
             onChangeText={props.setSearch}
             style={[
               styles.searchInput,
-              {
-                backgroundColor: colors.card,
-                color: colors.textPrimary,
-              },
+              { backgroundColor: colors.card, color: colors.textPrimary },
             ]}
             placeholderTextColor={colors.textSecondary}
           />
 
           {/* FILTER CHIPS */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {props.availableMuscles.map((m) => {
               const selected = props.muscleFilter === m;
               return (
                 <Pressable
                   key={m}
-                  onPress={() =>
-                    props.setMuscleFilter(
-                      selected ? null : m
-                    )
-                  }
+                  onPress={() => props.setMuscleFilter(selected ? null : m)}
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: selected
-                        ? colors.accent
-                        : colors.border,
+                      backgroundColor: selected ? colors.accent : colors.border,
                     },
                   ]}
                 >
                   <Text
                     style={{
-                      color: selected
-                        ? "#fff"
-                        : colors.textPrimary,
+                      color: selected ? "#fff" : colors.textPrimary,
                       fontWeight: "600",
                     }}
                   >
@@ -143,30 +83,23 @@ export function ExercisePickerModal(props: Props) {
             })}
 
             {props.availableEquipment.map((e) => {
-              const selected =
-                props.equipmentFilter === e;
+              const selected = props.equipmentFilter === e;
               return (
                 <Pressable
                   key={e}
                   onPress={() =>
-                    props.setEquipmentFilter(
-                      selected ? null : e
-                    )
+                    props.setEquipmentFilter(selected ? null : e)
                   }
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: selected
-                        ? colors.accent
-                        : colors.border,
+                      backgroundColor: selected ? colors.accent : colors.border,
                     },
                   ]}
                 >
                   <Text
                     style={{
-                      color: selected
-                        ? "#fff"
-                        : colors.textPrimary,
+                      color: selected ? "#fff" : colors.textPrimary,
                       fontWeight: "600",
                     }}
                   >
@@ -180,9 +113,10 @@ export function ExercisePickerModal(props: Props) {
 
         {/* LIST */}
         <FlatList
-          data={filteredData} // 🔥 FIX
+          data={props.data}
           keyExtractor={(i) => i.id}
-          style={{ backgroundColor: colors.background }}
+          onEndReached={props.onLoadMore}
+          onEndReachedThreshold={0.6}
           renderItem={({ item }) => (
             <Pressable
               style={[
@@ -191,34 +125,20 @@ export function ExercisePickerModal(props: Props) {
               ]}
               onPress={() => props.onSelect(item.name)}
             >
-              <Text
-                style={{
-                  color: colors.textPrimary,
-                  fontWeight: "600",
-                }}
-              >
+              <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>
                 {item.name}
               </Text>
-              <Text
-                style={[
-                  styles.exerciseMeta,
-                  { color: colors.textSecondary },
-                ]}
-              >
+              <Text style={[styles.exerciseMeta, { color: colors.textSecondary }]}>
                 {item.target} · {item.equipment}
               </Text>
             </Pressable>
           )}
-          ListEmptyComponent={
-            <Text
-              style={{
-                textAlign: "center",
-                marginTop: 24,
-                color: colors.textSecondary,
-              }}
-            >
-              No exercises found
-            </Text>
+          ListFooterComponent={
+            props.loading ? (
+              <Text style={{ textAlign: "center", padding: 16, color: colors.textSecondary }}>
+                Loading...
+              </Text>
+            ) : null
           }
         />
 
@@ -226,17 +146,9 @@ export function ExercisePickerModal(props: Props) {
         <View style={{ padding: 16 }}>
           <Pressable
             onPress={props.onClose}
-            style={[
-              styles.closeButton,
-              { backgroundColor: colors.card },
-            ]}
+            style={[styles.closeButton, { backgroundColor: colors.card }]}
           >
-            <Text
-              style={[
-                styles.closeText,
-                { color: colors.textPrimary },
-              ]}
-            >
+            <Text style={[styles.closeText, { color: colors.textPrimary }]}>
               Close
             </Text>
           </Pressable>
