@@ -1,31 +1,25 @@
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-  Alert,
-} from "react-native";
-import { useState, useEffect, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { addDoc, collection, doc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "../src/firebase/firebase";
-import {
-  addDoc,
-  collection,
-  Timestamp,
-  doc,
-  getDoc,
-} from "firebase/firestore";
 
 import { Card } from "../src/components/Card";
-import { useExerciseCatalog } from "../src/hooks/useExerciseCatalog";
 import { ExerciseCard } from "../src/components/ExerciseCard";
 import { ExercisePickerModal } from "../src/components/ExercisePickerModal";
 import { useTheme } from "../src/context/ThemeContext";
+import { useExerciseCatalog } from "../src/hooks/useExerciseCatalog";
 
 /* ===================== TYPES ===================== */
 
@@ -41,7 +35,10 @@ const LAST_SET_KEY = "exercise_last_sets";
 /* ===================== HELPERS ===================== */
 
 const normalize = (t: string) =>
-  t.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -62,7 +59,7 @@ export default function AddWorkout() {
   const {
     exercises: catalog,
     loadMore,
-    search, // 🔥 API search function
+    search,
     loading: catalogLoading,
   } = useExerciseCatalog();
 
@@ -74,12 +71,16 @@ export default function AddWorkout() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
 
-  const [searchText, setSearchText] = useState(""); // 🔥 UI search text
+  const [searchText, setSearchText] = useState("");
 
   const [lastSets, setLastSets] = useState<LastSetMap>({});
 
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null);
   const [equipmentFilter, setEquipmentFilter] = useState<string | null>(null);
+
+  /* ---------- DEBOUNCE TIMER ---------- */
+
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------- TIMER STATE ---------- */
 
@@ -105,7 +106,6 @@ export default function AddWorkout() {
   /* ---------- LOAD INITIAL EXERCISES ---------- */
 
   useEffect(() => {
-    // initial load
     search({});
   }, [search]);
 
@@ -138,20 +138,14 @@ export default function AddWorkout() {
 
     const durationMinutes = elapsedSeconds / 60;
 
-    // Base MET for strength training
     let met = 5.0;
 
-    // Scale MET based on workout density
-    const totalSets = exercises.reduce(
-      (sum, ex) => sum + ex.sets.length,
-      0
-    );
+    const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
 
     if (totalSets >= 20) met = 6.0;
     else if (totalSets >= 12) met = 5.5;
 
-    const calories =
-      met * userWeight * (durationMinutes / 60);
+    const calories = met * userWeight * (durationMinutes / 60);
 
     return Math.round(calories);
   }, [user, userWeight, elapsedSeconds, exercises]);
@@ -185,10 +179,7 @@ export default function AddWorkout() {
       return Alert.alert("Please start and finish the workout timer.");
     }
 
-    const durationMinutes = Math.max(
-      1,
-      Math.round(elapsedSeconds / 60)
-    );
+    const durationMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
 
     await addDoc(collection(db, "users", user.uid, "workouts"), {
       name: workoutName,
@@ -212,11 +203,8 @@ export default function AddWorkout() {
           Add Workout
         </Text>
 
-        {/* ---------- BASIC INFO ---------- */}
         <Card>
-          <Text style={{ color: colors.textSecondary }}>
-            Workout Name
-          </Text>
+          <Text style={{ color: colors.textSecondary }}>Workout Name</Text>
           <TextInput
             value={workoutName}
             onChangeText={setWorkoutName}
@@ -224,7 +212,6 @@ export default function AddWorkout() {
             placeholderTextColor={colors.textSecondary}
           />
 
-          {/* ---------- TIMER ---------- */}
           <Text style={{ marginTop: 12, color: colors.textSecondary }}>
             Workout Timer
           </Text>
@@ -253,9 +240,7 @@ export default function AddWorkout() {
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 borderRadius: 8,
-                backgroundColor: isRunning
-                  ? colors.danger
-                  : colors.accent,
+                backgroundColor: isRunning ? colors.danger : colors.accent,
               }}
             >
               <Text style={{ color: "#fff", fontWeight: "600" }}>
@@ -265,20 +250,15 @@ export default function AddWorkout() {
           </View>
         </Card>
 
-        {/* ---------- ADD EXERCISE ---------- */}
         <Pressable
           onPress={() => setPickerVisible(true)}
-          style={[
-            styles.addExercise,
-            { backgroundColor: colors.card },
-          ]}
+          style={[styles.addExercise, { backgroundColor: colors.card }]}
         >
           <Text style={{ color: colors.accent, fontWeight: "600" }}>
             ＋ Add Exercise
           </Text>
         </Pressable>
 
-        {/* ---------- EXERCISES ---------- */}
         {exercises.map((ex, i) => (
           <ExerciseCard
             key={i}
@@ -289,8 +269,8 @@ export default function AddWorkout() {
                 p.map((e, idx) =>
                   idx === i
                     ? { ...e, sets: [...e.sets, { reps: "", weight: "" }] }
-                    : e
-                )
+                    : e,
+                ),
               )
             }
             onDeleteSet={(s) =>
@@ -298,8 +278,8 @@ export default function AddWorkout() {
                 p.map((e, idx) =>
                   idx === i
                     ? { ...e, sets: e.sets.filter((_, j) => j !== s) }
-                    : e
-                )
+                    : e,
+                ),
               )
             }
             onDeleteExercise={() =>
@@ -312,23 +292,19 @@ export default function AddWorkout() {
                     ? {
                         ...e,
                         sets: e.sets.map((x, j) =>
-                          j === s ? { ...x, [f]: v } : x
+                          j === s ? { ...x, [f]: v } : x,
                         ),
                       }
-                    : e
-                )
+                    : e,
+                ),
               )
             }
           />
         ))}
 
-        {/* ---------- SAVE ---------- */}
         <Pressable
           onPress={saveWorkout}
-          style={[
-            styles.saveButton,
-            { backgroundColor: colors.accent },
-          ]}
+          style={[styles.saveButton, { backgroundColor: colors.accent }]}
         >
           <Text style={styles.saveText}>
             Save Workout • {caloriesBurned} kcal
@@ -336,17 +312,23 @@ export default function AddWorkout() {
         </Pressable>
       </ScrollView>
 
-      {/* ---------- EXERCISE PICKER MODAL ---------- */}
       <ExercisePickerModal
         visible={pickerVisible}
         search={searchText}
         setSearch={(t) => {
           setSearchText(t);
-          search({
-            search: t,
-            muscle: muscleFilter,
-            equipment: equipmentFilter,
-          });
+
+          if (searchTimer.current) {
+            clearTimeout(searchTimer.current);
+          }
+
+          searchTimer.current = setTimeout(() => {
+            search({
+              search: t,
+              muscle: muscleFilter,
+              equipment: equipmentFilter,
+            });
+          }, 400);
         }}
         availableMuscles={[...new Set(catalog.map((c) => c.target))]}
         availableEquipment={[...new Set(catalog.map((c) => c.equipment))]}
@@ -386,8 +368,6 @@ export default function AddWorkout() {
     </SafeAreaView>
   );
 }
-
-/* ===================== STYLES ===================== */
 
 const styles = StyleSheet.create({
   title: {
