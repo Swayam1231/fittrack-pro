@@ -1,88 +1,95 @@
-import { View, Text, TouchableOpacity, ActivityIndicator, Image } from "react-native";
-import { useRef, useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "../src/context/ThemeContext";
+import { useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function AIScanMeal() {
-  const router = useRouter();
-  const { colors } = useTheme();
-
-  const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const cameraRef = useRef<CameraView>(null);
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  if (!permission?.granted) {
+  if (!permission) {
+    return <View style={styles.container} />;
+  }
+
+  if (!permission.granted) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: colors.background,
-        }}
-      >
-        <Text style={{ color: colors.textPrimary, marginBottom: 12 }}>
-          Camera permission required
-        </Text>
-        <TouchableOpacity onPress={requestPermission}>
-          <Text style={{ color: colors.accent }}>Allow</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <Text style={styles.text}>We need camera permission</Text>
+        <Pressable style={styles.button} onPress={requestPermission}>
+          <Text style={styles.buttonText}>Grant Permission</Text>
+        </Pressable>
+      </View>
     );
   }
 
-  const takePhoto = async () => {
-    if (!cameraRef.current) return;
-    setLoading(true);
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-    setPhotoUri(photo.uri);
-    setLoading(false);
+  const takePicture = async () => {
+    if (!cameraRef.current || loading) return;
+
+    try {
+      setLoading(true);
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+      });
+
+      if (!photo?.uri) {
+        setLoading(false);
+        return;
+      }
+
+      router.push({
+        pathname: "/ai-confirm-meal",
+        params: { imageUri: photo.uri },
+      });
+    } catch (e) {
+      console.error("Camera error:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (photoUri) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <Image source={{ uri: photoUri }} style={{ flex: 1 }} />
-        <TouchableOpacity
-          onPress={() =>
-            router.push({
-              pathname: "../ai-confirm-meal",
-              params: { imageUri: photoUri },
-            })
-          }
-          style={{
-            padding: 16,
-            alignItems: "center",
-            backgroundColor: colors.card,
-          }}
-        >
-          <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>
-            Use Photo
-          </Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <CameraView ref={cameraRef} style={{ flex: 1 }} />
-      <TouchableOpacity
-        onPress={takePhoto}
-        style={{
-          padding: 16,
-          alignItems: "center",
-          backgroundColor: colors.card,
-        }}
-      >
-        <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>
-          📸 Capture
-        </Text>
-      </TouchableOpacity>
-      {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
+    <View style={styles.container}>
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+
+      <View style={styles.controls}>
+        <Pressable style={styles.captureButton} onPress={takePicture}>
+          <Text style={styles.captureText}>
+            {loading ? "Processing..." : "Capture"}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "black" },
+  camera: { flex: 1 },
+  controls: {
+    position: "absolute",
+    bottom: 40,
+    width: "100%",
+    alignItems: "center",
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  captureText: {
+    fontWeight: "bold",
+  },
+  text: { color: "white" },
+  button: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: "#4CAF50",
+    borderRadius: 8,
+  },
+  buttonText: { color: "white" },
+});

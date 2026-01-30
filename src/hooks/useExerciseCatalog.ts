@@ -1,14 +1,5 @@
-import { useState, useCallback } from "react";
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  startAfter,
-  where,
-  QueryDocumentSnapshot,
-} from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { useCallback, useState } from "react";
 import { db } from "../firebase/firebase";
 
 /* ===================== TYPES ===================== */
@@ -18,115 +9,79 @@ export type ExerciseCatalogItem = {
   name: string;
   target: string;
   equipment: string;
-  bodyPart?: string;
-  met?: number;
-};
-
-type Filters = {
-  search?: string;
-  muscle?: string | null;
-  equipment?: string | null;
+  bodyPart: string;
 };
 
 /* ===================== HOOK ===================== */
 
+type Filters = {
+  search?: string;
+  bodyPart?: string | null;
+  equipment?: string | null;
+};
+
 export function useExerciseCatalog() {
   const [exercises, setExercises] = useState<ExerciseCatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [lastDoc, setLastDoc] =
-    useState<QueryDocumentSnapshot | null>(null);
 
-  const PAGE_SIZE = 40;
+  const applyLocalFilters = (list: ExerciseCatalogItem[], filters: Filters) => {
+    let out = list;
 
-  const buildQuery = (filters: Filters) => {
-    const base = collection(db, "exercises");
-
-    // 🔍 Name search (prefix search)
-    if (filters.search && filters.search.trim()) {
-      const s = filters.search.trim();
-      return query(
-        base,
-        orderBy("name"),
-        where("name", ">=", s),
-        where("name", "<=", s + "\uf8ff"),
-        limit(PAGE_SIZE)
-      );
-    }
-
-    // 🎯 Muscle filter
-    if (filters.muscle) {
-      return query(
-        base,
-        where("target", "==", filters.muscle),
-        orderBy("name"),
-        limit(PAGE_SIZE)
-      );
-    }
-
-    // 🏋️ Equipment filter
+    // Equipment filter locally
     if (filters.equipment) {
-      return query(
-        base,
-        where("equipment", "==", filters.equipment),
-        orderBy("name"),
-        limit(PAGE_SIZE)
-      );
+      out = out.filter((e) => e.equipment === filters.equipment);
     }
 
-    // 📄 Default
-    return query(base, orderBy("name"), limit(PAGE_SIZE));
+    // Sort locally by name (instead of Firestore orderBy)
+    out = out.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+    return out;
   };
 
-  const load = useCallback(
-    async (filters: Filters = {}, reset = false) => {
-      if (loading) return;
-      if (!hasMore && !reset) return;
+  const search = useCallback(async (filters: Filters = {}) => {
+    setLoading(true);
 
-      setLoading(true);
+    try {
+      const base = collection(db, "exercises");
+      let q;
 
-      try {
-        let q = buildQuery(filters);
-
-        if (!reset && lastDoc) {
-          q = query(q, startAfter(lastDoc));
-        }
-
-        const snap = await getDocs(q);
-
-        const items = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }));
-
-        setExercises((prev) =>
-          reset ? items : [...prev, ...items]
+      // 🔍 Search by name (prefix)
+      if (filters.search && filters.search.trim()) {
+        const s = filters.search.trim();
+        q = query(
+          base,
+          where("name", ">=", s),
+          where("name", "<=", s + "\uf8ff"),
         );
-
-        setLastDoc(snap.docs[snap.docs.length - 1] || null);
-        setHasMore(snap.docs.length === PAGE_SIZE);
-      } finally {
-        setLoading(false);
       }
-    },
-    [loading, lastDoc, hasMore]
-  );
+      // 🧠 Filter by bodyPart
+      else if (filters.bodyPart) {
+        q = query(base, where("bodyPart", "==", filters.bodyPart));
+      }
+      // 📄 Default load (NO orderBy)
+      else {
+        q = query(base);
+      }
 
-  const search = useCallback(
-    async (filters: Filters = {}) => {
-      setLastDoc(null);
-      setHasMore(true);
-      setExercises([]);
-      await load(filters, true);
-    },
-    [load]
-  );
+      const snap = await getDocs(q);
+
+      const items: ExerciseCatalogItem[] = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as any),
+      }));
+
+      const filtered = applyLocalFilters(items, filters);
+      setExercises(filtered);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     exercises,
     loading,
-    hasMore,
-    loadMore: load,
+    hasMore: false,
+    loadMore: () => {},
     search,
   };
 }

@@ -1,170 +1,165 @@
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  Image,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { classifyFood } from "../src/ai/foodClassifier";
-import { matchFoodLabel } from "../src/ai/foodMatcher";
-import { FoodLibraryItem } from "../src/data/foodLibrary";
-import { useTheme } from "../src/context/ThemeContext";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Alert,
+} from "react-native";
+
+import { imageToTensor } from "../src/ml/imageToTensor";
+import { predictFood } from "../src/ml/predictFood";
 
 export default function AIConfirmMeal() {
+  const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const router = useRouter();
-  const { colors } = useTheme();
-  const params = useLocalSearchParams<{ imageUri?: string }>();
 
   const [loading, setLoading] = useState(true);
-  const [matched, setMatched] = useState<FoodLibraryItem | null>(null);
-  const [fallbackName, setFallbackName] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    label: string;
+    confidence: number;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!params.imageUri) return;
+    if (!imageUri) {
+      setError("No image provided");
+      setLoading(false);
+      return;
+    }
 
-    const run = async () => {
-      try {
-        setLoading(true);
+    runAI(imageUri as string);
+  }, [imageUri]);
 
-        const labels = await classifyFood(params.imageUri!);
+  async function runAI(uri: string) {
+    try {
+      console.log("Running AI on image:", uri);
 
-        // Try to match against your food library
-        for (const l of labels) {
-          const food = matchFoodLabel(l.label);
-          if (food) {
-            setMatched(food);
-            setLoading(false);
-            return;
-          }
-        }
+      setLoading(true);
+      setError(null);
 
-        // If nothing matched, use the top label as fallback
-        if (labels.length > 0) {
-          setFallbackName(labels[0].label);
-        }
+      const tensor = await imageToTensor(uri);
+      const prediction = await predictFood(tensor);
 
-        setLoading(false);
-      } catch (e) {
-        setLoading(false);
-        Alert.alert("AI failed", "Could not analyze image.");
-      }
-    };
+      console.log("Prediction:", prediction);
 
-    run();
-  }, [params.imageUri]);
-
-  if (loading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator />
-        <Text style={{ color: colors.textSecondary, marginTop: 12 }}>
-          Analyzing image...
-        </Text>
-      </View>
-    );
+      setResult(prediction);
+      setLoading(false);
+    } catch (e) {
+      console.error("AI error:", e);
+      setError(String(e));
+      setLoading(false);
+      Alert.alert("AI Error", String(e));
+    }
   }
 
-  const goToAdd = () => {
-    if (matched) {
-      // ✅ Send full object (your Add Meal already supports this)
-      router.replace({
-        pathname: "../add-meal",
-        params: {
-          scannedFood: JSON.stringify(matched),
-        },
-      });
-    } else if (fallbackName) {
-      // Create a temporary food object so Add Meal can still open
-      const tempFood: FoodLibraryItem = {
-        id: "ai_temp_" + Date.now(),
-        name: fallbackName,
-        searchText: fallbackName.toLowerCase(),
-        caloriesPer100g: 100,
-        proteinPer100g: 0,
-        carbsPer100g: 0,
-        fatsPer100g: 0,
-      };
+  function onUseThis() {
+    if (!result) return;
 
-      router.replace({
-        pathname: "../add-meal",
-        params: {
-          scannedFood: JSON.stringify(tempFood),
-        },
-      });
-    } else {
-      Alert.alert("Could not recognize food");
-    }
-  };
+    router.replace({
+      pathname: "/add-meal",
+      params: {
+        foodName: result.label,
+      },
+    });
+  }
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: colors.background }}>
-      {params.imageUri && (
+    <View style={styles.container}>
+      {imageUri && (
         <Image
-          source={{ uri: params.imageUri }}
-          style={{ height: 220, borderRadius: 12, marginBottom: 16 }}
+          source={{ uri: imageUri as string }}
+          style={styles.image}
+          resizeMode="cover"
         />
       )}
 
-      {matched ? (
-        <>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "700",
-              color: colors.textPrimary,
-            }}
-          >
-            {matched.name}
-          </Text>
-          <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>
-            {matched.caloriesPer100g} kcal / 100g
-          </Text>
-        </>
-      ) : fallbackName ? (
-        <>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "700",
-              color: colors.textPrimary,
-            }}
-          >
-            Detected: {fallbackName}
-          </Text>
-          <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>
-            Could not find exact match. You can edit it manually.
-          </Text>
-        </>
-      ) : (
-        <Text style={{ color: colors.textPrimary }}>
-          Could not recognize food
-        </Text>
-      )}
+      <View style={styles.bottom}>
+        {loading && (
+          <>
+            <ActivityIndicator size="large" />
+            <Text style={styles.text}>Analyzing food...</Text>
+          </>
+        )}
 
-      <TouchableOpacity
-        onPress={goToAdd}
-        style={{
-          marginTop: 16,
-          padding: 14,
-          borderRadius: 12,
-          alignItems: "center",
-          backgroundColor: colors.accent,
-        }}
-      >
-        <Text style={{ color: "#fff", fontWeight: "600" }}>
-          Use This
-        </Text>
-      </TouchableOpacity>
+        {!loading && error && (
+          <>
+            <Text style={styles.error}>AI Error:</Text>
+            <Text style={styles.error}>{error}</Text>
+          </>
+        )}
+
+        {!loading && !error && result && (
+          <>
+            <Text style={styles.detected}>Detected:</Text>
+            <Text style={styles.label}>
+              {result.label.replace(/_/g, " ")}
+            </Text>
+            <Text style={styles.confidence}>
+              Confidence: {(result.confidence * 100).toFixed(2)}%
+            </Text>
+
+            <Pressable style={styles.button} onPress={onUseThis}>
+              <Text style={styles.buttonText}>Use This</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  image: {
+    flex: 1,
+    width: "100%",
+  },
+  bottom: {
+    backgroundColor: "#fff",
+    padding: 20,
+    alignItems: "center",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  text: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  detected: {
+    fontSize: 18,
+    color: "#666",
+  },
+  label: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginVertical: 8,
+    textAlign: "center",
+  },
+  confidence: {
+    fontSize: 16,
+    color: "#444",
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  error: {
+    color: "red",
+    textAlign: "center",
+  },
+});

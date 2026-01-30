@@ -325,12 +325,13 @@ export default function AddWorkout() {
           searchTimer.current = setTimeout(() => {
             search({
               search: t,
-              muscle: muscleFilter,
+              bodyPart: muscleFilter,
               equipment: equipmentFilter,
             });
           }, 400);
         }}
-        availableMuscles={[...new Set(catalog.map((c) => c.target))]}
+        availableMuscles={[...new Set(catalog.map((c) => c.bodyPart))]}
+
         availableEquipment={[...new Set(catalog.map((c) => c.equipment))]}
         muscleFilter={muscleFilter}
         equipmentFilter={equipmentFilter}
@@ -338,7 +339,7 @@ export default function AddWorkout() {
           setMuscleFilter(m);
           search({
             search: searchText,
-            muscle: m,
+            bodyPart: m,
             equipment: equipmentFilter,
           });
         }}
@@ -346,19 +347,14 @@ export default function AddWorkout() {
           setEquipmentFilter(e);
           search({
             search: searchText,
-            muscle: muscleFilter,
+            bodyPart: muscleFilter,
             equipment: e,
           });
         }}
         data={catalog}
         loading={catalogLoading}
-        onLoadMore={() =>
-          loadMore({
-            search: searchText,
-            muscle: muscleFilter,
-            equipment: equipmentFilter,
-          })
-        }
+        onLoadMore={() => {}}
+
         onSelect={(name) => {
           addExerciseWithMemory(name);
           setPickerVisible(false);
