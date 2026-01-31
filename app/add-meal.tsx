@@ -1,31 +1,32 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { addDoc, collection, doc, setDoc, Timestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import {
-  View,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
+  View,
 } from "react-native";
-import { useEffect, useState } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { auth, db } from "../src/firebase/firebase";
-import { addDoc, collection, Timestamp, setDoc, doc } from "firebase/firestore";
 import { useTheme } from "../src/context/ThemeContext";
 import {
-  FoodLibraryItem,
-  loadFoodLibrary,
-  searchFoods,
-  getRecentSearches,
-  saveRecentSearch,
   clearRecentSearches,
+  FoodLibraryItem,
+  getRecentSearches,
+  loadFoodLibrary,
+  saveRecentSearch,
+  searchFoods,
 } from "../src/data/foodLibrary";
+import { auth, db } from "../src/firebase/firebase";
 
 /* ================= TYPES ================= */
 
 type RouteParams = {
   mealType?: string;
-  scannedFood?: string; // 🔥 AI result comes here
+  scannedFood?: string; // 🔥 AI result comes here as JSON
+  searchQuery?: string; // 🔥 AI detected label for manual search
 };
 
 type PortionPreset = {
@@ -131,6 +132,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+
+  aiBadge: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+  },
+
+  aiBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
 });
 
 /* ================= COMPONENT ================= */
@@ -147,6 +163,7 @@ export default function AddMeal() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selected, setSelected] = useState<FoodLibraryItem | null>(null);
   const [grams, setGrams] = useState("100");
+  const [isAIScanned, setIsAIScanned] = useState(false);
 
   useEffect(() => {
     loadFoodLibrary();
@@ -155,19 +172,34 @@ export default function AddMeal() {
 
   /* 🔥 RECEIVE AI RESULT */
   useEffect(() => {
-    if (!params.scannedFood) return;
-    try {
-      const f = JSON.parse(params.scannedFood);
-      setSelected(f as FoodLibraryItem);
-      setGrams("100");
-      setQueryText("");
-      setResults([]);
-    } catch {}
+    if (params.scannedFood) {
+      try {
+        const f = JSON.parse(params.scannedFood);
+        setSelected(f as FoodLibraryItem);
+        setGrams("100");
+        setQueryText("");
+        setResults([]);
+        setIsAIScanned(true);
+      } catch (e) {
+        console.error("Failed to parse scanned food:", e);
+      }
+    }
   }, [params.scannedFood]);
+
+  /* 🔥 RECEIVE AI SEARCH QUERY */
+  useEffect(() => {
+    if (params.searchQuery) {
+      const query = params.searchQuery;
+      setQueryText(query);
+      setResults(searchFoods(query));
+      setIsAIScanned(false);
+    }
+  }, [params.searchQuery]);
 
   const onSearch = (text: string) => {
     setQueryText(text);
     setResults(searchFoods(text));
+    setIsAIScanned(false);
   };
 
   const clearRecent = async () => {
@@ -192,12 +224,16 @@ export default function AddMeal() {
         fatsPer100g: food.fatsPer100g,
         favorite: !isFav,
       },
-      { merge: true }
+      { merge: true },
     );
 
     setFavorites((p) => {
       const n = new Set(p);
-      isFav ? n.delete(food.id) : n.add(food.id);
+      if (isFav) {
+        n.delete(food.id);
+      } else {
+        n.add(food.id);
+      }
       return n;
     });
   };
@@ -223,6 +259,7 @@ export default function AddMeal() {
       carbs,
       fats,
       createdAt: Timestamp.now(),
+      aiScanned: isAIScanned, // Track if this was AI-scanned
     });
 
     await setDoc(
@@ -231,7 +268,7 @@ export default function AddMeal() {
         lastUsedGrams: Number(grams),
         favorite: favorites.has(selected.id),
       },
-      { merge: true }
+      { merge: true },
     );
 
     router.back();
@@ -355,6 +392,7 @@ export default function AddMeal() {
                   onPress={() => {
                     saveRecentSearch(queryText);
                     setSelected(f);
+                    setIsAIScanned(false); // Manual selection
                   }}
                 >
                   <Text style={{ color: colors.textPrimary }}>{f.name}</Text>
@@ -384,6 +422,13 @@ export default function AddMeal() {
 
         {selected && (
           <>
+            {/* AI SCANNED BADGE */}
+            {isAIScanned && (
+              <View style={styles.aiBadge}>
+                <Text style={styles.aiBadgeText}>✨ AI Detected</Text>
+              </View>
+            )}
+
             <Text style={{ color: colors.textPrimary, fontWeight: "700" }}>
               {selected.name}
             </Text>

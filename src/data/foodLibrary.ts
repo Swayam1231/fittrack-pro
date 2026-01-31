@@ -1,17 +1,12 @@
-import { FOOD_LIBRARY } from "./foodLibraryData";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebase/firebase";
+import { FOOD_LIBRARY, FoodLibraryItem } from "./foodLibraryData";
 
 /* ================= TYPES ================= */
 
-export type FoodLibraryItem = {
-  id: string;
-  name: string;
-  caloriesPer100g: number;
-  proteinPer100g: number;
-  carbsPer100g: number;
-  fatsPer100g: number;
+export { FoodLibraryItem };
 
+export type FoodLibraryItemWithSearch = FoodLibraryItem & {
   searchText: string;
 };
 
@@ -30,7 +25,10 @@ const SEARCH_ALIASES: Record<string, string[]> = {
 /* ================= HELPERS ================= */
 
 const normalize = (t: string) =>
-  t.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
 
 const getAlternates = (token: string) => [
   token,
@@ -79,7 +77,7 @@ export const clearRecentSearches = async () => {
 
 /* ================= CACHE ================= */
 
-let CACHE: FoodLibraryItem[] = [];
+let CACHE: FoodLibraryItemWithSearch[] = [];
 let LOADED = false;
 
 /* ================= LOAD ================= */
@@ -121,5 +119,5 @@ export const searchFoods = (query: string): FoodLibraryItem[] => {
   })
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score)
-    .map((r) => r.food);
+    .map((r) => ({ ...r.food, searchText: undefined }) as FoodLibraryItem);
 };

@@ -25,7 +25,8 @@ export async function classifyFood(imageUri: string): Promise<DetectedFood[]> {
     return detectedFoods;
   } catch (error) {
     console.error("❌ ML Kit classification error:", error);
-    throw new Error(`Failed to classify image: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to classify image: ${message}`);
   }
 }
 
