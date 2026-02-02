@@ -4,11 +4,17 @@ import { onAuthStateChanged } from "firebase/auth";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { auth } from "../src/firebase/firebase";
+import { initTensorFlow } from "../src/ml/customFoodModel";
 
 export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    // Initialize TensorFlow.js
+    initTensorFlow().catch((error) =>
+      console.error("TensorFlow initialization failed in RootLayout:", error)
+    );
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         router.replace("/(auth)/login");
@@ -16,7 +22,7 @@ export default function RootLayout() {
     });
 
     return unsubscribe;
-  }, []);
+  }, [router]);
 
   return (
     <SafeAreaProvider>

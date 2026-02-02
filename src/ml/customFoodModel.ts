@@ -4,76 +4,44 @@
  */
 
 import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-react-native";
+
+import { loadGraphModel } from "@tensorflow/tfjs-converter";
 import { bundleResourceIO } from "@tensorflow/tfjs-react-native";
 
-// Food labels matching your trained model
-const FOOD_LABELS = [
-  "aloo_paratha",
-  "aloo_sabzi",
-  "bread_omelette",
-  "butter_chicken",
-  "butter_naan",
-  "butter_roti",
-  "chaat",
-  "chicken_biryani",
-  "chicken_curry",
-  "chicken_tikka",
-  "chole",
-  "dal_makhani",
-  "dal_tadka",
-  "dosa",
-  "egg_curry",
-  "fish_curry",
-  "gulab_jamun",
-  "idli",
-  "jalebi",
-  "jeera_rice",
-  "kheer",
-  "khichdi",
-  "maggi",
-  "mix_veg",
-  "naan",
-  "pakoda",
-  "paneer_butter_masala",
-  "pani_puri",
-  "paratha",
-  "pav_bhaji",
-  "plain_rice",
-  "rajma",
-  "rasgulla",
-  "roti",
-  "sambar",
-  "samosa",
-  "shahi_paneer",
-  "vada",
-  "veg_biryani",
-  "veg_pulao",
-];
+import { FOOD_LABELS } from "./foodLabels";
 
 let model: tf.GraphModel | null = null;
 let tfReady = false;
+let tfInitializing: Promise<void> | null = null;
 
 /**
  * Initialize TensorFlow.js for React Native
  * Must be called before any predictions
  */
 export async function initTensorFlow() {
-  if (tfReady) return;
-
-  try {
-    console.log("🔧 Initializing TensorFlow.js...");
-
-    // Wait for TensorFlow to be ready
-    await tf.ready();
-
-    tfReady = true;
-    console.log("✅ TensorFlow.js ready!");
-    console.log("   Backend:", tf.getBackend());
-  } catch (error) {
-    console.error("❌ TensorFlow initialization failed:", error);
-    throw error;
+  if (tfReady) {
+    return;
   }
+  if (tfInitializing) {
+    return tfInitializing;
+  }
+
+  tfInitializing = (async () => {
+    try {
+      console.log("🔧 Initializing TensorFlow.js...");
+      await tf.ready();
+      tfReady = true;
+      console.log("✅ TensorFlow.js ready!");
+      console.log("   Backend:", tf.getBackend());
+    } catch (error: unknown) {
+      console.error("❌ TensorFlow initialization failed:", error);
+      throw error;
+    } finally {
+      tfInitializing = null;
+    }
+  })();
+
+  return tfInitializing;
 }
 
 /**
@@ -86,23 +54,21 @@ export async function loadFoodModel() {
     return model;
   }
 
-  if (!tfReady) {
-    await initTensorFlow();
-  }
+  await initTensorFlow();
 
   try {
     console.log("📦 Loading food model...");
 
     // Load model from bundled assets
     // Make sure model files are in: assets/food-model/
-    const modelJson = require("../../assets/food-model/model.json");  
+    const modelJson = require("../../assets/food-model/model.json");
     const modelWeights = [
       require("../../assets/food-model/group1-shard1of3.bin"), // eslint-disable-line
       require("../../assets/food-model/group1-shard2of3.bin"), // eslint-disable-line
       require("../../assets/food-model/group1-shard3of3.bin"), // eslint-disable-line
     ];
 
-    model = await tf.loadGraphModel(bundleResourceIO(modelJson, modelWeights));
+    model = await loadGraphModel(bundleResourceIO(modelJson, modelWeights));
 
     console.log("✅ Model loaded successfully!");
     console.log("   Input shape:", model.inputs[0].shape);
@@ -118,9 +84,10 @@ export async function loadFoodModel() {
     console.log("✅ Model warmed up");
 
     return model;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("❌ Model loading failed:", error);
-    throw new Error(`Failed to load model: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to load model: ${errorMessage}`);
   }
 }
 

@@ -1,6 +1,5 @@
-import { View, Text, TextInput, Pressable } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Card } from "./Card";
-import { StyleSheet } from "react-native";
 import { useTheme } from "../context/ThemeContext"; // ✅ added
 
 type SetEntry = { reps: string; weight: string };

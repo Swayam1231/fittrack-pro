@@ -1,5 +1,4 @@
 import {
-  View,
   Text,
   TextInput,
   ScrollView,
@@ -33,7 +32,7 @@ export default function ExercisePresets() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [name, setName] = useState("");
 
-  const loadPresets = async () => {
+  const loadPresets = useCallback(async () => {
     if (!uid) return;
 
     const snap = await getDocs(
@@ -49,11 +48,11 @@ export default function ExercisePresets() {
         name: d.data().name,
       }))
     );
-  };
+  }, [uid]);
 
   useEffect(() => {
     loadPresets();
-  }, []);
+  }, [loadPresets]);
 
   const addPreset = async () => {
     if (!uid || name.trim() === "") return;

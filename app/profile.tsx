@@ -37,7 +37,7 @@ export default function Profile() {
     });
 
     return unsub;
-  }, [user?.uid]);
+  }, [user, user?.uid]);
 
   /* ---------- GUARDS ---------- */
   if (!user) return null;

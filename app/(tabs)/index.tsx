@@ -1,16 +1,19 @@
-import { View, Text, ScrollView, Pressable, SafeAreaView } from "react-native";
-import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { auth, db } from "../../src/firebase/firebase";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
 import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
+import { auth, db } from "../../src/firebase/firebase";
 
 import {
+  DocumentData,
+  DocumentSnapshot,
+  QuerySnapshot,
+  Timestamp,
   collection,
   doc,
+  onSnapshot,
   query,
   where,
-  Timestamp,
-  onSnapshot,
 } from "firebase/firestore";
 import { Card } from "../../src/components/Card";
 
@@ -50,11 +53,14 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
-    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
-      if (snap.exists()) {
-        setTargets(snap.data().targets);
-      }
-    });
+    const unsub = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap: DocumentSnapshot<DocumentData>) => {
+        if (snap.exists()) {
+          setTargets(snap.data().targets);
+        }
+      },
+    );
 
     return unsub;
   }, [user]);
@@ -66,16 +72,16 @@ export default function Home() {
 
     const q = query(
       collection(db, "users", user.uid, "meals"),
-      where("createdAt", ">=", Timestamp.fromDate(today))
+      where("createdAt", ">=", Timestamp.fromDate(today)),
     );
 
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
       setMeals(snap.docs.map((d) => d.data()));
       setLoading(false);
     });
 
     return unsub;
-  }, [user]);
+  }, [user, today, setMeals, setLoading]);
 
   /* ================= REAL-TIME WORKOUTS (FIX) ================= */
 
@@ -84,31 +90,31 @@ export default function Home() {
 
     const q = query(
       collection(db, "users", user.uid, "workouts"),
-      where("createdAt", ">=", Timestamp.fromDate(today))
+      where("createdAt", ">=", Timestamp.fromDate(today)),
     );
 
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
       setWorkouts(snap.docs.map((d) => d.data()));
     });
 
     return unsub;
-  }, [user]);
+  }, [user, today, setWorkouts]);
 
   /* ================= CALCULATIONS ================= */
 
   const consumedCalories = useMemo(
     () => meals.reduce((s, m) => s + (m.calories || 0), 0),
-    [meals]
+    [meals],
   );
 
   const consumedProtein = useMemo(
     () => meals.reduce((s, m) => s + (m.protein || 0), 0),
-    [meals]
+    [meals],
   );
 
   const burnedCalories = useMemo(
     () => workouts.reduce((sum, w) => sum + (w.caloriesBurned || 0), 0),
-    [workouts]
+    [workouts],
   );
 
   const targetCalories = targets?.calories || 0;

@@ -5,6 +5,10 @@
 
 import { FOOD_LIBRARY } from "../data/foodLibraryData";
 import { FoodLibraryItem } from "../data/foodLibrary";
+import {
+  getFoodLabels as getSupportedFoods,
+  formatFoodLabel,
+} from "./customFoodModel";
 
 /**
  * Match a predicted label to food library
@@ -77,82 +81,27 @@ export function matchFoodLabel(label: string): FoodLibraryItem | null {
 }
 
 /**
- * Format AI label to human-readable name
- * @param label - Raw label like "butter_chicken"
- * @returns Formatted name like "Butter Chicken"
- */
-export function formatAILabel(label: string): string {
-  return label
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-/**
- * Get all supported AI food labels
- */
-export function getSupportedFoods(): string[] {
-  return [
-    "aloo_paratha",
-    "aloo_sabzi",
-    "bread_omelette",
-    "butter_chicken",
-    "butter_naan",
-    "butter_roti",
-    "chaat",
-    "chicken_biryani",
-    "chicken_curry",
-    "chicken_tikka",
-    "chole",
-    "dal_makhani",
-    "dal_tadka",
-    "dosa",
-    "egg_curry",
-    "fish_curry",
-    "gulab_jamun",
-    "idli",
-    "jalebi",
-    "jeera_rice",
-    "kheer",
-    "khichdi",
-    "maggi",
-    "mix_veg",
-    "naan",
-    "pakoda",
-    "paneer_butter_masala",
-    "pani_puri",
-    "paratha",
-    "pav_bhaji",
-    "plain_rice",
-    "rajma",
-    "rasgulla",
-    "roti",
-    "sambar",
-    "samosa",
-    "shahi_paneer",
-    "vada",
-    "veg_biryani",
-    "veg_pulao"
-  ];
-}
-
-/**
  * Check if a food is supported by the AI model
  * @param foodName - Food name to check
  * @returns true if model can recognize this food
  */
 export function isSupportedFood(foodName: string): boolean {
-  const normalized = foodName.toLowerCase().replace(/\s+/g, '_');
+  const normalized = foodName.toLowerCase().replace(/\s+/g, "_");
   return getSupportedFoods().includes(normalized);
 }
 
 /**
- * Get suggestions for unsupported foods
- * @param label - AI label that wasn't in library
- * @returns Suggested items to add to library
+ * Get all supported AI food labels
+ */
+export { getSupportedFoods };
+
+/**
+ * Format AI label to human-readable name
+ * @param label - Raw label like "butter_chicken"
+ * @returns Formatted name like "Butter Chicken"
  */
 export function getSuggestion(label: string): string {
-  const formatted = formatAILabel(label);
+  const formatted = formatFoodLabel(label);
   
   // Provide default nutritional estimates based on food type
   const suggestions: Record<string, any> = {

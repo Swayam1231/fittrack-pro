@@ -66,7 +66,7 @@ export default function EditGoalWeight() {
       });
 
       router.back();
-    } catch (e) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       Alert.alert("Error", "Failed to update goal weight.");
     } finally {
       setSaving(false);

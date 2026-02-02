@@ -23,9 +23,10 @@ export async function classifyFood(imageUri: string): Promise<DetectedFood[]> {
     console.log("✅ Detected foods:", detectedFoods);
 
     return detectedFoods;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("❌ ML Kit classification error:", error);
-    throw new Error(`Failed to classify image: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to classify image: ${errorMessage}`);
   }
 }
 

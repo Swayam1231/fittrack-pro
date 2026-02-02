@@ -58,7 +58,6 @@ export default function AddWorkout() {
 
   const {
     exercises: catalog,
-    loadMore,
     search,
     loading: catalogLoading,
   } = useExerciseCatalog();
