@@ -77,28 +77,46 @@ export default function WorkoutDetails() {
             color: colors.textPrimary, // ✅
           }}
         >
-          Total Volume: {workout.totalVolume} kg
+          Total Volume: {(() => {
+            let v = 0;
+            (workout.exercises || []).forEach((ex: any) => {
+              (ex.sets || []).forEach((s: any) => {
+                v += (Number(s.reps) || 0) * (Number(s.weight) || 0);
+              });
+            });
+            return v;
+          })()} kg
         </Text>
       </Card>
 
-      {workout.exercises.map((e: any, i: number) => (
-        <Card key={i}>
-          <Text
-            style={{
-              fontWeight: "600",
-              color: colors.textPrimary, // ✅
-            }}
-          >
-            {e.name}
-          </Text>
-          <Text style={{ color: colors.textSecondary }}>
-            {e.sets} x {e.reps} @ {e.weight} kg
-          </Text>
-          <Text style={{ color: colors.textSecondary }}>
-            Volume: {e.volume} kg
-          </Text>
-        </Card>
-      ))}
+      {(workout.exercises || []).map((e: any, i: number) => {
+        const sets = e.sets || [];
+        const exerciseVolume = sets.reduce(
+          (sum: number, s: any) =>
+            sum + (Number(s.reps) || 0) * (Number(s.weight) || 0),
+          0
+        );
+        return (
+          <Card key={i}>
+            <Text
+              style={{
+                fontWeight: "600",
+                color: colors.textPrimary, // ✅
+              }}
+            >
+              {e.name}
+            </Text>
+            {sets.map((s: any, si: number) => (
+              <Text key={si} style={{ color: colors.textSecondary }}>
+                Set {si + 1}: {s.reps} x {s.weight} kg
+              </Text>
+            ))}
+            <Text style={{ color: colors.textSecondary }}>
+              Volume: {exerciseVolume} kg
+            </Text>
+          </Card>
+        );
+      })}
 
       <Pressable
         onPress={() =>

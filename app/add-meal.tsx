@@ -335,7 +335,7 @@ export default function AddMeal() {
                 </TouchableOpacity>
               ))}
             </View>
-          </V>
+          </View>
         )}
 
         {!selected &&
