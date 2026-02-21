@@ -25,8 +25,6 @@ import { auth, db } from "../src/firebase/firebase";
 
 type RouteParams = {
   mealType?: string;
-  scannedFood?: string; // 🔥 AI result comes here as JSON
-  searchQuery?: string; // 🔥 AI detected label for manual search
 };
 
 type PortionPreset = {
@@ -163,43 +161,15 @@ export default function AddMeal() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selected, setSelected] = useState<FoodLibraryItem | null>(null);
   const [grams, setGrams] = useState("100");
-  const [isAIScanned, setIsAIScanned] = useState(false);
 
   useEffect(() => {
     loadFoodLibrary();
     getRecentSearches().then(setRecentSearches);
   }, []);
 
-  /* 🔥 RECEIVE AI RESULT */
-  useEffect(() => {
-    if (params.scannedFood) {
-      try {
-        const f = JSON.parse(params.scannedFood);
-        setSelected(f as FoodLibraryItem);
-        setGrams("100");
-        setQueryText("");
-        setResults([]);
-        setIsAIScanned(true);
-      } catch (e) {
-        console.error("Failed to parse scanned food:", e);
-      }
-    }
-  }, [params.scannedFood]);
-
-  /* 🔥 RECEIVE AI SEARCH QUERY */
-  useEffect(() => {
-    if (params.searchQuery) {
-      const query = params.searchQuery;
-      setQueryText(query);
-      setResults(searchFoods(query));
-      setIsAIScanned(false);
-    }
-  }, [params.searchQuery]);
-
   const onSearch = (text: string) => {
     setQueryText(text);
     setResults(searchFoods(text));
-    setIsAIScanned(false);
   };
 
   const clearRecent = async () => {
@@ -259,7 +229,6 @@ export default function AddMeal() {
       carbs,
       fats,
       createdAt: Timestamp.now(),
-      aiScanned: isAIScanned, // Track if this was AI-scanned
     });
 
     await setDoc(
@@ -290,14 +259,6 @@ export default function AddMeal() {
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           Add Meal
         </Text>
-
-        {/* 🔥 AI SCAN MEAL */}
-        <TouchableOpacity
-          onPress={() => router.push("/ai-scan-meal")}
-          style={[styles.aiButton, { backgroundColor: colors.accent }]}
-        >
-          <Text style={styles.primaryText}>📸 AI Scan Meal</Text>
-        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => router.push("/favorite-foods")}
@@ -374,7 +335,7 @@ export default function AddMeal() {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
+          </V>
         )}
 
         {!selected &&
@@ -392,7 +353,6 @@ export default function AddMeal() {
                   onPress={() => {
                     saveRecentSearch(queryText);
                     setSelected(f);
-                    setIsAIScanned(false); // Manual selection
                   }}
                 >
                   <Text style={{ color: colors.textPrimary }}>{f.name}</Text>
@@ -422,13 +382,6 @@ export default function AddMeal() {
 
         {selected && (
           <>
-            {/* AI SCANNED BADGE */}
-            {isAIScanned && (
-              <View style={styles.aiBadge}>
-                <Text style={styles.aiBadgeText}>✨ AI Detected</Text>
-              </View>
-            )}
-
             <Text style={{ color: colors.textPrimary, fontWeight: "700" }}>
               {selected.name}
             </Text>
