@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@react-native-community/cli": "^14.0.1",
+    "@react-native/metro-config": "^0.84.1",
     "@types/react": "~19.1.0",
     "@types/react-native-svg-charts": "^5.0.16",
     "eslint": "^9.25.0",

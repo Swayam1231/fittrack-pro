@@ -127,16 +127,16 @@ export default function Home() {
       ? Math.min((consumedCalories / targetCalories) * 100, 100)
       : 0;
 
-  /* ================= UI (UNCHANGED) ================= */
+  /* ================= UI ================= */
 
-  if (loading || !targets) {
+  if (loading) {
     return (
       <SafeAreaView
         style={{
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: colors.background, // ✅ COLOR ONLY
+          backgroundColor: colors.background,
         }}
       >
         <Text style={{ color: colors.textPrimary }}>Loading…</Text>
@@ -159,15 +159,20 @@ export default function Home() {
             marginBottom: 16,
           }}
         >
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: "700",
-              color: colors.textPrimary, // ✅
-            }}
-          >
-            FitTrack
-          </Text>
+          <View>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "700",
+                color: colors.textPrimary,
+              }}
+            >
+              FitTrack
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+              Welcome back, {user?.displayName || "Athlete"}
+            </Text>
+          </View>
 
           <Pressable onPress={() => router.push("../profile")}>
             <View
@@ -175,17 +180,34 @@ export default function Home() {
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                backgroundColor: colors.border, // ✅
+                backgroundColor: colors.border,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <Text style={{ fontWeight: "700", color: colors.textPrimary }}>
-                {user?.email?.[0]?.toUpperCase() ?? "U"}
+                {user?.displayName?.[0]?.toUpperCase() ?? "U"}
               </Text>
             </View>
           </Pressable>
         </View>
+
+        {!targets && (
+          <Card style={{ backgroundColor: colors.card, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: colors.accent }}>
+             <Text style={{ color: colors.textPrimary, fontWeight: "700", marginBottom: 4 }}>
+               Complete Your Profile
+             </Text>
+             <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
+               Set your goals to see personalized daily targets.
+             </Text>
+             <Pressable 
+               onPress={() => router.push("../profile")}
+               style={{ backgroundColor: colors.accent, padding: 10, borderRadius: 8, alignItems: "center" }}
+             >
+               <Text style={{ color: "#fff", fontWeight: "600" }}>Set Up Now</Text>
+             </Pressable>
+          </Card>
+        )}
 
         {/* ---------- DAILY SUMMARY ---------- */}
         <Card style={{ backgroundColor: colors.accent, marginBottom: 16 }}>

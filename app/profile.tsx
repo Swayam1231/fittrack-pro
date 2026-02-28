@@ -1,27 +1,28 @@
-import { View, Text, ScrollView, Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { auth, db } from "../src/firebase/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { auth, db } from "../src/firebase/firebase";
 
 /* ---- COMPONENTS ---- */
 import EditProfileModal from "../src/components/EditProfileModal";
-import StatCard from "../src/components/profile/StatCard";
-import ProgressOverview from "../src/components/profile/ProgressOverview";
-import TrainingPreferences from "../src/components/profile/TrainingPreferences";
-import GoalsMilestones from "../src/components/profile/GoalsMilestones";
-import SettingsSection from "../src/components/profile/SettingsSection";
 import EditTrainingPreferencesModal from "../src/components/profile/EditTrainingPreferencesModal";
+import GoalsMilestones from "../src/components/profile/GoalsMilestones";
+import ProgressOverview from "../src/components/profile/ProgressOverview";
+import SettingsSection from "../src/components/profile/SettingsSection";
+import StatCard from "../src/components/profile/StatCard";
+import TrainingPreferences from "../src/components/profile/TrainingPreferences";
 
 /* ---- UTILS ---- */
-import { formatHeight, formatWeight } from "../src/utils/unit";
 import { useTheme } from "../src/context/ThemeContext"; // ✅ ADDED
+import { formatHeight, formatWeight } from "../src/utils/unit";
 
 export default function Profile() {
   const user = auth.currentUser;
   const { colors } = useTheme(); // ✅ ADDED
   const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTrainingOpen, setEditTrainingOpen] = useState(false);
@@ -34,6 +35,7 @@ export default function Profile() {
       if (snap.exists()) {
         setProfile(snap.data());
       }
+      setLoading(false);
     });
 
     return unsub;
@@ -42,19 +44,70 @@ export default function Profile() {
   /* ---------- GUARDS ---------- */
   if (!user) return null;
 
-  if (!profile) {
+  if (loading) {
     return (
       <SafeAreaView
         style={{
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: colors.background, // ✅
+          backgroundColor: colors.background,
         }}
       >
-        <Text style={{ color: colors.textPrimary }}>
-          Loading profile…
-        </Text>
+        <Text style={{ color: colors.textPrimary }}>Loading profile…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View
+          style={{
+            flex: 1,
+            padding: 20,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Ionicons name="person-outline" size={64} color={colors.accent} />
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontSize: 20,
+              fontWeight: "700",
+              marginTop: 20,
+            }}
+          >
+            No Profile Found
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              textAlign: "center",
+              marginVertical: 12,
+            }}
+          >
+            We could not find your profile details. Let is set them up now!
+          </Text>
+          <Pressable
+            onPress={() => setEditOpen(true)}
+            style={{
+              backgroundColor: colors.accent,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "600" }}>
+              Create Profile
+            </Text>
+          </Pressable>
+        </View>
+        <EditProfileModal
+          visible={editOpen}
+          onClose={() => setEditOpen(false)}
+        />
       </SafeAreaView>
     );
   }
@@ -66,8 +119,7 @@ export default function Profile() {
   const heightDisplay = formatHeight(profile.height, unit);
   const weightDisplay = formatWeight(profile.weight, unit);
 
-  const leanMass =
-    profile.weight * (1 - (profile.bodyFat ?? 0) / 100);
+  const leanMass = profile.weight * (1 - (profile.bodyFat ?? 0) / 100);
 
   const leanMassRounded = Number(leanMass.toFixed(2));
 
@@ -227,7 +279,7 @@ export default function Profile() {
               label="Body Fat"
               value={`${profile.bodyFat ?? "—"}%`}
               subtitle="Estimated"
-              bg={colors.card}   /* unchanged prop, themed upstream */
+              bg={colors.card} /* unchanged prop, themed upstream */
               color={colors.danger}
             />
 
@@ -254,10 +306,7 @@ export default function Profile() {
         <SettingsSection />
       </ScrollView>
 
-      <EditProfileModal
-        visible={editOpen}
-        onClose={() => setEditOpen(false)}
-      />
+      <EditProfileModal visible={editOpen} onClose={() => setEditOpen(false)} />
       <EditTrainingPreferencesModal
         visible={editTrainingOpen}
         onClose={() => setEditTrainingOpen(false)}

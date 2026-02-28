@@ -1,36 +1,57 @@
-import { Stack, useRouter } from "expo-router";
-import { useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { auth } from "../src/firebase/firebase";
+import { View, ActivityIndicator } from "react-native";
 
 export default function RootLayout() {
   const router = useRouter();
+  const segments = useSegments();
+  const [isReady, setIsReady] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        router.replace("/(auth)/login");
-      }
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setIsReady(true);
     });
 
     return unsubscribe;
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    const inAuthGroup = segments[0] === "(auth)";
+
+    if (!user && !inAuthGroup) {
+      // Not logged in, and not in auth group -> go to login
+      router.replace("/(auth)/login");
+    } else if (user && inAuthGroup) {
+      // Logged in, but still in auth group -> go to app
+      router.replace("/(tabs)");
+    }
+  }, [user, isReady, segments]);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <Stack screenOptions={{ headerShown: false }}>
-          {/* AUTH */}
           <Stack.Screen name="(auth)/login" />
           <Stack.Screen name="(auth)/register" />
-
-          {/* MAIN APP */}
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="profile" />
           <Stack.Screen name="add-meal" />
-          <Stack.Screen name="meal/[id]" />
           <Stack.Screen name="add-metric" />
           <Stack.Screen name="add-workout" />
           <Stack.Screen name="workout/[id]" />
