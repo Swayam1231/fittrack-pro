@@ -5,7 +5,7 @@ import {
   Pressable,
   Alert,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { auth, db } from "../src/firebase/firebase";
 import {
   addDoc,

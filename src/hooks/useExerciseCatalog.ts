@@ -1,80 +1,139 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
 import { useCallback, useState } from "react";
-import { db } from "../firebase/firebase";
+import exercisesData from "../data/exercises.json";
 
 /* ===================== TYPES ===================== */
 
-export type ExerciseCatalogItem = {
+export interface ExerciseCatalogItem {
   id: string;
   name: string;
-  target: string;
-  equipment: string;
   bodyPart: string;
+  primaryMuscles: string[];
+  secondaryMuscles?: string[];
+  equipment: string;
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
+  movementType: "Compound" | "Isolation";
+  forceType?: "Push" | "Pull" | "Static";
+  target?: string; // Legacy support
+  score?: number;  // Ranking score
+}
+
+export interface ExerciseFilters {
+  query?: string;
+  search?: string; // Compatibility with legacy calls
+  bodyPart?: string | null;
+  muscles?: string[] | string | null;
+  equipment?: string[] | string | null;
+  difficulty?: string[] | string | null;
+  movementType?: string[] | string | null;
+}
+
+/* ===================== HELPERS ===================== */
+
+const toArray = (val: any): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return [val];
+};
+
+const safeExercises = (Array.isArray(exercisesData) ? exercisesData : []).filter(Boolean) as ExerciseCatalogItem[];
+
+/* ===================== FILTER & RANKING LOGIC ===================== */
+
+export const searchExercises = (
+  exercises: ExerciseCatalogItem[],
+  filters: ExerciseFilters
+): ExerciseCatalogItem[] => {
+  if (!Array.isArray(exercises)) return [];
+  const f = filters || {};
+
+  const {
+    query,
+    search,
+    bodyPart,
+  } = f;
+
+  const muscles = toArray(f.muscles);
+  const equipment = toArray(f.equipment);
+  const difficulty = toArray(f.difficulty);
+  const movementType = toArray(f.movementType);
+
+  const q = (query || search)?.trim().toLowerCase();
+
+  return exercises
+    .map((ex) => {
+      if (!ex) return null;
+      let score = 0;
+
+      // 🔎 Text relevance scoring
+      if (q) {
+        const name = ex.name?.toLowerCase() || "";
+        if (name === q) score += 10;
+        else if (name.includes(q)) score += 5;
+        
+        if (ex.primaryMuscles && Array.isArray(ex.primaryMuscles)) {
+          if (ex.primaryMuscles.some((m) => m && typeof m === "string" && m.toLowerCase().includes(q))) score += 3;
+        }
+        if (ex.secondaryMuscles && Array.isArray(ex.secondaryMuscles)) {
+          if (ex.secondaryMuscles.some((m) => m && typeof m === "string" && m.toLowerCase().includes(q))) score += 2;
+        }
+        const equip = ex.equipment?.toLowerCase() || "";
+        if (equip.includes(q)) score += 1;
+      }
+
+      // 🧠 Compound priority boost
+      if (ex.movementType === "Compound") score += 2;
+
+      return { ...ex, score };
+    })
+    .filter((ex): ex is ExerciseCatalogItem & { score: number } => {
+      if (!ex || !ex.id) return false;
+
+      // 🧍 Body Part Filter
+      if (bodyPart && bodyPart.toLowerCase() !== "all") {
+        if (!ex.bodyPart || ex.bodyPart.toLowerCase() !== bodyPart.toLowerCase()) return false;
+      }
+
+      // 💪 Multi-select Muscle Filter
+      if (muscles.length > 0) {
+        const matches = muscles.some(
+          (m) =>
+            (ex.primaryMuscles && Array.isArray(ex.primaryMuscles) && ex.primaryMuscles.includes(m)) || 
+            (ex.secondaryMuscles && Array.isArray(ex.secondaryMuscles) && ex.secondaryMuscles.includes(m))
+        );
+        if (!matches) return false;
+      }
+
+      // 🏋 Multi-select Equipment Filter
+      if (equipment.length > 0) {
+        if (!ex.equipment || !equipment.includes(ex.equipment)) return false;
+      }
+
+      // 📈 Multi-select Difficulty Filter
+      if (difficulty.length > 0) {
+        if (!ex.difficulty || !difficulty.includes(ex.difficulty)) return false;
+      }
+
+      // 🔁 Multi-select Movement Type Filter
+      if (movementType.length > 0) {
+        if (!ex.movementType || !movementType.includes(ex.movementType)) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => (b.score || 0) - (a.score || 0) || (a.name || "").localeCompare(b.name || ""));
 };
 
 /* ===================== HOOK ===================== */
 
-type Filters = {
-  search?: string;
-  bodyPart?: string | null;
-  equipment?: string | null;
-};
-
 export function useExerciseCatalog() {
-  const [exercises, setExercises] = useState<ExerciseCatalogItem[]>([]);
+  const [exercises, setExercises] = useState<ExerciseCatalogItem[]>(safeExercises);
   const [loading, setLoading] = useState(false);
 
-  const applyLocalFilters = (list: ExerciseCatalogItem[], filters: Filters) => {
-    let out = list;
-
-    // Equipment filter locally
-    if (filters.equipment) {
-      out = out.filter((e) => e.equipment === filters.equipment);
-    }
-
-    // Sort locally by name (instead of Firestore orderBy)
-    out = out.slice().sort((a, b) => a.name.localeCompare(b.name));
-
-    return out;
-  };
-
-  const search = useCallback(async (filters: Filters = {}) => {
+  const search = useCallback(async (filters: ExerciseFilters = {}) => {
     setLoading(true);
-
-    try {
-      const base = collection(db, "exercises");
-      let q;
-
-      // 🔍 Search by name (prefix)
-      if (filters.search && filters.search.trim()) {
-        const s = filters.search.trim();
-        q = query(
-          base,
-          where("name", ">=", s),
-          where("name", "<=", s + "\uf8ff"),
-        );
-      }
-      // 🧠 Filter by bodyPart
-      else if (filters.bodyPart) {
-        q = query(base, where("bodyPart", "==", filters.bodyPart));
-      }
-      // 📄 Default load (NO orderBy)
-      else {
-        q = query(base);
-      }
-
-      const snap = await getDocs(q);
-
-      const items: ExerciseCatalogItem[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      }));
-
-      const filtered = applyLocalFilters(items, filters);
-      setExercises(filtered);
-    } finally {
-      setLoading(false);
-    }
+    const results = searchExercises(safeExercises, filters);
+    setExercises(results);
+    setLoading(false);
   }, []);
 
   return {

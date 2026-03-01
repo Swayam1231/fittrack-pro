@@ -59,6 +59,7 @@ export function ExercisePickerModal(props: Props) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {props.availableMuscles.map((m) => {
               const selected = props.muscleFilter === m;
+              if (!m) return null;
               return (
                 <Pressable
                   key={m}
@@ -84,6 +85,7 @@ export function ExercisePickerModal(props: Props) {
 
             {props.availableEquipment.map((e) => {
               const selected = props.equipmentFilter === e;
+              if (!e) return null;
               return (
                 <Pressable
                   key={e}
@@ -129,7 +131,7 @@ export function ExercisePickerModal(props: Props) {
                 {item.name}
               </Text>
               <Text style={[styles.exerciseMeta, { color: colors.textSecondary }]}>
-                {item.target} · {item.equipment}
+                {item.primaryMuscles?.join(", ") || item.target} · {item.equipment}
               </Text>
             </Pressable>
           )}

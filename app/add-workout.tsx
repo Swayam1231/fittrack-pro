@@ -83,7 +83,7 @@ export default function AddWorkout() {
 
   /* ---------- TIMER STATE ---------- */
 
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   /* ---------- LOAD USER DATA ---------- */
@@ -120,14 +120,8 @@ export default function AddWorkout() {
     return () => clearInterval(id);
   }, [isRunning]);
 
-  const startWorkout = () => {
-    if (isRunning) return;
-    setElapsedSeconds(0);
-    setIsRunning(true);
-  };
-
-  const stopWorkout = () => {
-    setIsRunning(false);
+  const toggleTimer = () => {
+    setIsRunning(!isRunning);
   };
 
   /* ===================== CALORIES ===================== */
@@ -234,7 +228,7 @@ export default function AddWorkout() {
             </Text>
 
             <Pressable
-              onPress={isRunning ? stopWorkout : startWorkout}
+              onPress={toggleTimer}
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 8,
@@ -243,7 +237,7 @@ export default function AddWorkout() {
               }}
             >
               <Text style={{ color: "#fff", fontWeight: "600" }}>
-                {isRunning ? "Stop" : "Start"}
+                {isRunning ? "Pause" : "Resume"}
               </Text>
             </Pressable>
           </View>
