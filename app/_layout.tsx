@@ -1,10 +1,10 @@
 import { Stack, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { ThemeProvider } from "../src/context/ThemeContext";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ThemeProvider } from "../src/context/ThemeContext";
 import { auth } from "../src/firebase/firebase";
-import { View, ActivityIndicator } from "react-native";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -33,11 +33,18 @@ export default function RootLayout() {
       // Logged in, but still in auth group -> go to app
       router.replace("/(tabs)");
     }
-  }, [user, isReady, segments]);
+  }, [user, isReady, segments, router]);
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#000",
+        }}
+      >
         <ActivityIndicator size="large" color="#fff" />
       </View>
     );
