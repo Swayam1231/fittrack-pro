@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -215,7 +216,7 @@ export default function Workout() {
                   <Pressable
                     onPress={() =>
                       router.push({
-                        pathname: "/share-workout",
+                        pathname: "/share-workout" as any,
                         params: {
                           name: w.name,
                           duration: w.duration,

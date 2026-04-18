@@ -75,7 +75,6 @@ export default function AddMeal() {
 
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<FoodLibraryItem[]>([]);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selected, setSelected] = useState<FoodLibraryItem | null>(null);
   const [grams, setGrams] = useState("100");
@@ -112,6 +111,7 @@ export default function AddMeal() {
         proteinPer100g: Number(params.scannedPro) || 0,
         carbsPer100g: Number(params.scannedCarb) || 0,
         fatsPer100g: Number(params.scannedFat) || 0,
+        source: "scanner",
       });
     }
   }, [params.scannedName]);
@@ -188,7 +188,7 @@ export default function AddMeal() {
                   value={queryText}
                   onChangeText={onSearch}
                 />
-                <TouchableOpacity onPress={() => router.push("/scanner")} style={{ padding: 12, backgroundColor: `${colors.primary}15`, borderRadius: 12, marginRight: 4 }}>
+                <TouchableOpacity onPress={() => router.push("/scanner" as any)} style={{ padding: 12, backgroundColor: `${colors.primary}15`, borderRadius: 12, marginRight: 4 }}>
                     <Ionicons name="barcode-outline" size={24} color={colors.primary} />
                 </TouchableOpacity>
             </View>

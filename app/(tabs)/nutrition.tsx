@@ -18,16 +18,6 @@ function startOfDayDate(date: Date) {
   return d;
 }
 
-function formatDate(date: Date) {
-  const today = startOfDayDate(new Date()).getTime();
-  const target = startOfDayDate(date).getTime();
-  const diff = (target - today) / 86400000;
-
-  if (diff === 0) return "Today";
-  if (diff === -1) return "Yesterday";
-  return date.toDateString();
-}
-
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
 /* ================= COMPONENT ================= */

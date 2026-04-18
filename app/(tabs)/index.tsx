@@ -35,6 +35,7 @@ export default function Home() {
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [targets, setTargets] = useState<any>(null);
   const [water, setWater] = useState(0);
   const [steps, setSteps] = useState(0);
   const [meals, setMeals] = useState<any[]>([]);
@@ -92,6 +93,7 @@ export default function Home() {
   }, [user]);
 
   const syncGoogleFit = () => {
+     if (!user) return;
      // Simulated Google Fit Logic
      const mockSteps = Math.floor(Math.random() * 5000) + 2000;
      FirestoreService.updateSteps(user.uid, mockSteps);
@@ -237,10 +239,10 @@ export default function Home() {
                     <Text style={{ fontSize: 13, color: colors.textSecondary }}>{water.toFixed(1)}L of 2.5L target</Text>
                  </View>
                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <Pressable onPress={() => FirestoreService.logWater(user.uid, -0.25)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border }}>
+                    <Pressable onPress={() => user && FirestoreService.logWater(user.uid, -0.25)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border }}>
                        <Ionicons name="remove" size={20} color={colors.textPrimary} />
                     </Pressable>
-                    <Pressable onPress={() => FirestoreService.logWater(user.uid, 0.25)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.accent}15`, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.accent }}>
+                    <Pressable onPress={() => user && FirestoreService.logWater(user.uid, 0.25)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.accent}15`, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.accent }}>
                        <Ionicons name="add" size={20} color={colors.accent} />
                     </Pressable>
                  </View>

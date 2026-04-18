@@ -37,13 +37,9 @@ export default function Progress() {
   useEffect(() => {
     if (!uid) return;
 
-    setLoading(true);
-
     const unsubProfile = FirestoreService.subscribeToProfile(uid, setProfile);
     const unsubWeight = FirestoreService.subscribeToWeightHistory(uid, setWeightHistory);
     const unsubWorkouts = FirestoreService.subscribeToWorkoutHistory(uid, setWorkouts);
-    
-    // Quick and dirty weekly fetch (Normally done server-side or via specific date query)
     const unsubMeals = FirestoreService.subscribeToMealsByDate(uid, new Date(), setMeals);
     
     setLoading(false);
@@ -51,6 +47,7 @@ export default function Progress() {
     return () => {
       unsubProfile();
       unsubWeight();
+      unsubWorkouts();
       unsubMeals();
     };
   }, [uid]);
