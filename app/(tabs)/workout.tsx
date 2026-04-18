@@ -1,43 +1,12 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-} from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  collection,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  Timestamp,
-} from "firebase/firestore";
-import { auth, db } from "../../src/firebase/firebase";
+import { FirestoreService, Workout } from "../../src/services/firestore.service";
 import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
-import { useTheme } from "../../src/context/ThemeContext"; // ✅ ADDED
-
-/* ---------- TYPES ---------- */
-
-type SetType = {
-  reps: number;
-  weight: number;
-};
-
-type ExerciseType = {
-  name: string;
-  sets: SetType[];
-};
-
-type WorkoutType = {
-  id: string;
-  name: string;
-  exercises: ExerciseType[];
-  caloriesBurned?: number;
-  createdAt?: Timestamp;
-};
+import { useTheme } from "../../src/context/ThemeContext";
+import { useAuth } from "../../src/context/AuthContext";
 
 /* ---------- HELPERS ---------- */
 
@@ -50,10 +19,10 @@ function isToday(date: Date) {
   );
 }
 
-function calcVolume(exercises: ExerciseType[]) {
+function calcVolume(exercises: any[]) {
   let volume = 0;
   exercises.forEach((ex) => {
-    ex.sets.forEach((s) => {
+    ex.sets?.forEach((s: any) => {
       volume += (s.reps || 0) * (s.weight || 0);
     });
   });
@@ -64,57 +33,41 @@ function calcVolume(exercises: ExerciseType[]) {
 
 export default function Workout() {
   const router = useRouter();
-  const uid = auth.currentUser?.uid;
-  const { colors } = useTheme(); // ✅ ADDED
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const { colors } = useTheme();
 
   const [loading, setLoading] = useState(true);
-  const [todayWorkout, setTodayWorkout] = useState<WorkoutType | null>(null);
-  const [history, setHistory] = useState<WorkoutType[]>([]);
+  const [todayWorkout, setTodayWorkout] = useState<Workout | null>(null);
+  const [history, setHistory] = useState<Workout[]>([]);
 
-  /* ================= REAL-TIME WORKOUTS (FIX) ================= */
+  /* ================= REAL-TIME WORKOUTS ================= */
 
   useEffect(() => {
     if (!uid) return;
 
-    const unsub = onSnapshot(
-      collection(db, "users", uid, "workouts"),
-      (snap) => {
-        const all: WorkoutType[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<WorkoutType, "id">),
-        }));
+    return FirestoreService.subscribeToWorkoutHistory(uid, (all) => {
+      let today: Workout | null = null;
+      const past: Workout[] = [];
 
-        // SAFE SORT
-        all.sort((a, b) => {
-          const aTime = a.createdAt?.toMillis?.() ?? 0;
-          const bTime = b.createdAt?.toMillis?.() ?? 0;
-          return bTime - aTime;
-        });
+      all.forEach((w) => {
+        const date = w.createdAt?.toDate();
+        if (date && isToday(date) && !today) {
+          today = w;
+        } else {
+          past.push(w);
+        }
+      });
 
-        let today: WorkoutType | null = null;
-        const past: WorkoutType[] = [];
-
-        all.forEach((w) => {
-          const date = w.createdAt?.toDate();
-          if (date && isToday(date) && !today) {
-            today = w;
-          } else {
-            past.push(w);
-          }
-        });
-
-        setTodayWorkout(today);
-        setHistory(past);
-        setLoading(false);
-      }
-    );
-
-    return unsub;
+      setTodayWorkout(today);
+      setHistory(past);
+      setLoading(false);
+    });
   }, [uid]);
 
   const deleteWorkout = async (id: string) => {
     if (!uid) return;
-    await deleteDoc(doc(db, "users", uid, "workouts", id));
+    await FirestoreService.deleteWorkout(uid, id);
   };
 
   if (loading) return <Loading label="Loading workouts..." />;
@@ -258,7 +211,23 @@ export default function Workout() {
                   {w.name}
                 </Text>
 
-                <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flexDirection: "row", gap: 16 }}>
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/share-workout",
+                        params: {
+                          name: w.name,
+                          duration: w.duration,
+                          calories: w.caloriesBurned,
+                          date: w.createdAt.toDate().toLocaleDateString()
+                        }
+                      })
+                    }
+                  >
+                    <Ionicons name="share-social-outline" size={18} color={colors.primary} />
+                  </Pressable>
+
                   <Pressable
                     onPress={() =>
                       router.push(`/edit-workout/${w.id}`)
@@ -269,7 +238,7 @@ export default function Workout() {
                     </Text>
                   </Pressable>
 
-                  <Pressable onPress={() => deleteWorkout(w.id)}>
+                  <Pressable onPress={() => w.id && deleteWorkout(w.id)}>
                     <Text style={{ color: colors.danger }}>
                       🗑
                     </Text>

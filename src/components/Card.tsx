@@ -8,13 +8,17 @@ type CardProps = {
 };
 
 export function Card({ children, style }: CardProps) {
-  const { colors } = useTheme(); // ✅ added
+  const { colors, theme } = useTheme();
 
   return (
     <View
       style={[
         styles.card,
-        { backgroundColor: colors.card }, // ✅ replaced
+        { 
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          shadowColor: theme === "dark" ? "#000" : colors.primary,
+        },
         style,
       ]}
     >
@@ -25,15 +29,12 @@ export function Card({ children, style }: CardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-
-    /* shadows preserved exactly */
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
 });

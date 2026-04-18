@@ -21,14 +21,26 @@ export type ThemeColors = {
   textPrimary: string;
   textSecondary: string;
   border: string;
+  primary: string;
+  secondary: string;
   accent: string;
   danger: string;
+  success: string;
+  warning: string;
+  surface: string;
+};
+
+export type ThemeGradients = {
+  primary: [string, string];
+  secondary: [string, string];
+  accent: [string, string];
 };
 
 type ThemeContextType = {
   mode: ThemeMode;
   theme: ResolvedTheme;
   colors: ThemeColors;
+  gradients: ThemeGradients;
   setMode: (mode: ThemeMode) => void;
 };
 
@@ -37,23 +49,39 @@ type ThemeContextType = {
    ===================================================== */
 
 const lightColors: ThemeColors = {
-  background: "#F9FAFB",
+  background: "#F8FAFC",
   card: "#FFFFFF",
-  textPrimary: "#111827",
-  textSecondary: "#6B7280",
-  border: "#E5E7EB",
-  accent: "#2563EB",
-  danger: "#DC2626",
+  textPrimary: "#0F172A",
+  textSecondary: "#64748B",
+  border: "#E2E8F0",
+  primary: "#6366F1", // Indigo
+  secondary: "#64748B",
+  accent: "#3B82F6", // Blue
+  danger: "#EF4444",
+  success: "#10B981",
+  warning: "#F59E0B",
+  surface: "#F1F5F9",
 };
 
 const darkColors: ThemeColors = {
-  background: "#0B0F19",
-  card: "#111827",
-  textPrimary: "#F9FAFB",
-  textSecondary: "#9CA3AF",
-  border: "#1F2937",
-  accent: "#3B82F6",
+  background: "#020617",
+  card: "#0F172A",
+  textPrimary: "#F8FAFC",
+  textSecondary: "#94A3B8",
+  border: "#1E293B",
+  primary: "#818CF8",
+  secondary: "#94A3B8",
+  accent: "#60A5FA",
   danger: "#F87171",
+  success: "#34D399",
+  warning: "#FBBF24",
+  surface: "#1E293B",
+};
+
+const gradients: ThemeGradients = {
+  primary: ["#6366F1", "#4F46E5"],
+  secondary: ["#64748B", "#475569"],
+  accent: ["#3B82F6", "#2563EB"],
 };
 
 /* =====================================================
@@ -130,6 +158,7 @@ export function ThemeProvider({
         mode,
         theme: resolvedTheme,
         colors,
+        gradients,
         setMode,
       }}
     >

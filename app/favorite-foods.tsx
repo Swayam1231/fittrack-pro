@@ -1,179 +1,81 @@
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { auth, db } from "../src/firebase/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  doc,
-  setDoc,
-} from "firebase/firestore";
+import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { FirestoreService } from "../src/services/firestore.service";
+import { useAuth } from "../src/context/AuthContext";
 import { useTheme } from "../src/context/ThemeContext";
-
-/* ================= TYPES ================= */
-
-type FavoriteFood = {
-  id: string; // 🔴 Firestore document ID (REQUIRED)
-  foodName: string;
-  caloriesPer100g: number;
-  proteinPer100g?: number;
-  carbsPer100g?: number;
-  fatsPer100g?: number;
-  lastUsedGrams?: number;
-};
+import { Loading } from "../src/components/Loading";
+import { Card } from "../src/components/Card";
 
 /* ================= COMPONENT ================= */
 
 export default function FavoriteFoods() {
   const { colors } = useTheme();
-  const uid = auth.currentUser?.uid;
+  const { user } = useAuth();
+  const uid = user?.uid;
 
-  const [foods, setFoods] = useState<FavoriteFood[]>([]);
+  const [foods, setFoods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   /* ---------- LOAD FAVORITES ---------- */
   useEffect(() => {
     if (!uid) return;
-
-    const loadFavorites = async () => {
-      setLoading(true);
-
-      const snap = await getDocs(
-        query(
-          collection(db, "users", uid, "foodStats"),
-          where("favorite", "==", true)
-        )
-      );
-
-      // ✅ IMPORTANT: attach doc.id explicitly
-      const favs: FavoriteFood[] = snap.docs.map((d) => ({
-        id: d.id, // 🔑 THIS FIXES THE CRASH
-        ...(d.data() as Omit<FavoriteFood, "id">),
-      }));
-
-      setFoods(favs);
+    return FirestoreService.subscribeToFavoriteFoods(uid, (data) => {
+      setFoods(data);
       setLoading(false);
-    };
-
-    loadFavorites();
+    });
   }, [uid]);
 
   /* ---------- UNFAVORITE ---------- */
   const unfavorite = async (id: string) => {
     if (!uid || !id) return;
-
-    // Firestore update
-    await setDoc(
-      doc(db, "users", uid, "foodStats", id),
-      { favorite: false },
-      { merge: true }
-    );
-
-    // Instant UI update
-    setFoods((prev) => prev.filter((f) => f.id !== id));
+    await FirestoreService.unfavoriteFood(uid, id);
   };
 
-  /* ================= UI ================= */
+  if (loading) return <Loading label="Loading favorites..." />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          ⭐ Favorite Foods
-        </Text>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <Animated.View entering={FadeInUp.duration(600)}>
+            <Text style={{ fontSize: 28, fontWeight: "800", color: colors.textPrimary, marginBottom: 8, letterSpacing: -1 }}>Favorites</Text>
+            <Text style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 32 }}>Your most tracked items</Text>
+        </Animated.View>
 
-        {loading && (
-          <Text style={{ color: colors.textSecondary }}>
-            Loading favorites…
-          </Text>
-        )}
-
-        {!loading && foods.length === 0 && (
-          <Text style={{ color: colors.textSecondary }}>
-            No favorites yet.
-          </Text>
-        )}
-
-        {foods.map((f) => (
-          <View
-            key={f.id}
-            style={[
-              styles.card,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{ color: colors.textPrimary, fontWeight: "600" }}
-                >
-                  {f.foodName}
-                </Text>
-
-                <Text
-                  style={{ color: colors.textSecondary, fontSize: 12 }}
-                >
-                  {f.caloriesPer100g} kcal / 100g
-                  {f.lastUsedGrams
-                    ? ` • Last used ${f.lastUsedGrams} g`
-                    : ""}
-                </Text>
-              </View>
-
-              {/* ⭐ UNFAVORITE */}
-              <TouchableOpacity
-                onPress={() => unfavorite(f.id)}
-                style={styles.star}
-              >
-                <Text
-                  style={{
-                    fontSize: 20,
-                    color: colors.accent,
-                  }}
-                >
-                  ★
-                </Text>
-              </TouchableOpacity>
-            </View>
+        {foods.length === 0 ? (
+          <View style={{ padding: 60, alignItems: "center" }}>
+            <Ionicons name="star-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.3, marginBottom: 16 }} />
+            <Text style={{ color: colors.textSecondary, textAlign: "center", fontWeight: "600" }}>No favorites yet</Text>
           </View>
-        ))}
+        ) : (
+          foods.map((f, i) => (
+            <Animated.View key={f.id} entering={FadeInDown.delay(i * 100).duration(600)}>
+              <Card style={{ marginBottom: 12, padding: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.textPrimary, fontWeight: "700", fontSize: 16, marginBottom: 4 }}>{f.foodName}</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                      {f.caloriesPer100g} kcal / 100g {f.lastUsedGrams ? `• ${f.lastUsedGrams}g` : ""}
+                    </Text>
+                  </View>
+
+                  <Pressable onPress={() => unfavorite(f.id)} style={{ padding: 8 }}>
+                    <Ionicons name="star" size={24} color={colors.warning} />
+                  </Pressable>
+                </View>
+              </Card>
+            </Animated.View>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-/* ================= STYLES ================= */
-
-const styles = StyleSheet.create({
-  container: { padding: 16 },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 16,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  star: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-});

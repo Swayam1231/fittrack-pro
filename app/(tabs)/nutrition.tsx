@@ -1,38 +1,26 @@
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
-import { auth, db } from "../../src/firebase/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  Timestamp,
-  deleteDoc,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { startOfDay, format } from "date-fns";
+import { FirestoreService } from "../../src/services/firestore.service";
 import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
 import { useTheme } from "../../src/context/ThemeContext";
+import { useAuth } from "../../src/context/AuthContext";
 
 /* ================= HELPERS ================= */
 
-function startOfDay(date: Date) {
+function startOfDayDate(date: Date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-function endOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
 function formatDate(date: Date) {
-  const today = startOfDay(new Date()).getTime();
-  const target = startOfDay(date).getTime();
+  const today = startOfDayDate(new Date()).getTime();
+  const target = startOfDayDate(date).getTime();
   const diff = (target - today) / 86400000;
 
   if (diff === 0) return "Today";
@@ -46,7 +34,8 @@ const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
 export default function Nutrition() {
   const router = useRouter();
-  const uid = auth.currentUser?.uid;
+  const { user } = useAuth();
+  const uid = user?.uid;
   const { colors } = useTheme();
 
   const [date, setDate] = useState(new Date());
@@ -64,54 +53,28 @@ export default function Nutrition() {
   /* ---------- LOAD PROFILE TARGETS ---------- */
   useFocusEffect(
     useCallback(() => {
-      const loadProfile = async () => {
-        if (!uid) return;
-
-        const snap = await getDoc(doc(db, "users", uid));
-        if (!snap.exists()) return;
-
-        const t = snap.data().targets;
-        if (!t) return;
-
+      if (!uid) return;
+      return FirestoreService.subscribeToProfile(uid, (data) => {
+        if (!data) return;
         setTargets({
-          calories: t.calories ?? 0,
-          protein: t.protein ?? 0,
-          carbs: t.carbs ?? 0,
-          fats: t.fats ?? 0,
+          calories: data.targets.calories ?? 0,
+          protein: data.targets.protein ?? 0,
+          carbs: data.targets.carbs ?? 0,
+          fats: data.targets.fats ?? 0,
         });
-      };
-
-      loadProfile();
+      });
     }, [uid])
   );
 
   /* ---------- LOAD MEALS ---------- */
   useFocusEffect(
     useCallback(() => {
-      const loadMeals = async () => {
-        if (!uid) return;
-
-        setLoading(true);
-
-        const snap = await getDocs(
-          query(
-            collection(db, "users", uid, "meals"),
-            where("createdAt", ">=", Timestamp.fromDate(startOfDay(date))),
-            where("createdAt", "<=", Timestamp.fromDate(endOfDay(date)))
-          )
-        );
-
-        setMeals(
-          snap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }))
-        );
-
+      if (!uid) return;
+      setLoading(true);
+      return FirestoreService.subscribeToMealsByDate(uid, date, (data) => {
+        setMeals(data);
         setLoading(false);
-      };
-
-      loadMeals();
+      });
     }, [uid, date])
   );
 
@@ -167,104 +130,121 @@ export default function Nutrition() {
 
   const deleteMeal = async (id: string) => {
     if (!uid) return;
-    await deleteDoc(doc(db, "users", uid, "meals", id));
-    setMeals((p) => p.filter((m) => m.id !== id));
+    await FirestoreService.deleteMeal(uid, id);
+  };
+
+  /* ---------- SAVE AS FAVORITE ---------- */
+  const saveAsFavorite = async (m: any) => {
+    if (!uid) return;
+    await FirestoreService.addFavoriteMeal(uid, {
+      foodName: m.foodName,
+      calories: m.calories,
+      protein: m.protein,
+      carbs: m.carbs,
+      fats: m.fats,
+      grams: m.grams,
+    });
+    alert("Saved to Favorite Meals!");
   };
 
   if (loading) return <Loading label="Loading nutrition..." />;
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        Nutrition
-      </Text>
-
-      {/* DATE */}
-      <View style={[styles.dateBox, { borderColor: colors.border }]}>
-        <Pressable onPress={() => changeDate(-1)} hitSlop={12}>
-          <Text style={[styles.arrow, { color: colors.textPrimary }]}>‹</Text>
-        </Pressable>
-        <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-          {formatDate(date)}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Nutrition
         </Text>
-        <Pressable onPress={() => changeDate(1)} hitSlop={12}>
-          <Text style={[styles.arrow, { color: colors.textPrimary }]}>›</Text>
-        </Pressable>
-      </View>
 
-      {/* MACROS */}
-      <View style={styles.macroGrid}>
-        <Macro
-          title="Calories"
-          value={totals.calories}
-          goal={targets.calories}
-        />
-        <Macro title="Protein" value={totals.protein} goal={targets.protein} />
-        <Macro title="Carbs" value={totals.carbs} goal={targets.carbs} />
-        <Macro title="Fats" value={totals.fats} goal={targets.fats} />
-      </View>
+        <View style={[styles.dateBox, { borderColor: colors.border }]}>
+          <Pressable onPress={() => changeDate(-1)} hitSlop={12}>
+            <Text style={[styles.arrow, { color: colors.textPrimary }]}>‹</Text>
+          </Pressable>
+          <Text style={[styles.dateText, { color: colors.textPrimary }]}>
+            {format(date, "EEEE, MMM d")}
+          </Text>
+          <Pressable onPress={() => changeDate(1)} hitSlop={12}>
+            <Text style={[styles.arrow, { color: colors.textPrimary }]}>›</Text>
+          </Pressable>
+        </View>
 
-      {/* MEALS */}
-      <View style={{ marginTop: 20 }}>
-        {MEAL_TYPES.map((type) => (
-          <View key={type} style={{ marginBottom: 16 }}>
-            <View style={styles.sectionHeader}>
-              <Text
-                style={[styles.sectionTitle, { color: colors.textPrimary }]}
-              >
-                {type}
-              </Text>
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/add-meal",
-                    params: {
-                      mealType: type,
-                      date: startOfDay(date).toISOString(),
-                    },
-                  })
-                }
-              >
-                <Text style={[styles.add, { color: colors.accent }]}>＋</Text>
-              </Pressable>
-            </View>
+        {/* MACROS */}
+        <View style={styles.macroGrid}>
+          <Macro
+            title="Calories"
+            value={totals.calories}
+            goal={targets.calories}
+          />
+          <Macro title="Protein" value={totals.protein} goal={targets.protein} />
+          <Macro title="Carbs" value={totals.carbs} goal={targets.carbs} />
+          <Macro title="Fats" value={totals.fats} goal={targets.fats} />
+        </View>
 
-            {mealsByType[type].map((m) => (
-              <Card
-                key={m.id}
-                style={{ marginBottom: 8, backgroundColor: colors.card }}
-              >
-                <View style={styles.row}>
-                  <View>
-                    <Text
-                      style={{ fontWeight: "600", color: colors.textPrimary }}
-                    >
-                      {m.foodName}
-                    </Text>
+        {/* MEALS */}
+        <View style={{ marginTop: 20 }}>
+          {MEAL_TYPES.map((type) => (
+            <View key={type} style={{ marginBottom: 16 }}>
+              <View style={styles.sectionHeader}>
+                <Text
+                  style={[styles.sectionTitle, { color: colors.textPrimary }]}
+                >
+                  {type}
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/add-meal",
+                      params: {
+                        mealType: type,
+                        date: startOfDay(date).toISOString(),
+                      },
+                    })
+                  }
+                >
+                  <Text style={[styles.add, { color: colors.accent }]}>＋</Text>
+                </Pressable>
+              </View>
 
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      {m.grams} g • {m.calories} kcal
-                    </Text>
+              {mealsByType[type].map((m) => (
+                <Card
+                  key={m.id}
+                  style={{ marginBottom: 8, backgroundColor: colors.card }}
+                >
+                  <View style={styles.row}>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontWeight: "600", color: colors.textPrimary }}
+                      >
+                        {m.foodName}
+                      </Text>
 
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      P {m.protein}g | C {m.carbs}g | F {m.fats}g
-                    </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                        {m.grams} g • {m.calories} kcal
+                      </Text>
+
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                        P {m.protein}g | C {m.carbs}g | F {m.fats}g
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+                      <Pressable onPress={() => saveAsFavorite(m)}>
+                        <Ionicons name="star-outline" size={18} color={colors.warning} />
+                      </Pressable>
+                      <Pressable onPress={() => deleteMeal(m.id)}>
+                        <Text style={[styles.delete, { color: colors.danger }]}>
+                          🗑️
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
-
-                  <Pressable onPress={() => deleteMeal(m.id)}>
-                    <Text style={[styles.delete, { color: colors.danger }]}>
-                      🗑️
-                    </Text>
-                  </Pressable>
-                </View>
-              </Card>
-            ))}
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+                </Card>
+              ))}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

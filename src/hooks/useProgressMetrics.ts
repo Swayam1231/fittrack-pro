@@ -1,67 +1,70 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot } from "firebase/firestore";
-import { auth, db } from "../firebase/firebase";
-
-/* ---------- PURE JS DATE HELPERS (NO DEPENDENCIES) ---------- */
-function startOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function subDays(date: Date, days: number) {
-  const d = new Date(date);
-  d.setDate(d.getDate() - days);
-  return d;
-}
+import { collection, doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { subDays, startOfDay } from "date-fns";
+import { db } from "../firebase/firebase";
+import { useAuth } from "../context/AuthContext";
 
 type Range = 7 | 30 | 90;
 
-export function useProgressMetrics(range: Range) {
-  const uid = auth.currentUser?.uid;
+interface Meal {
+  calories: number;
+  createdAt: Timestamp;
+}
 
-  const [user, setUser] = useState<any>(null);
-  const [meals, setMeals] = useState<any[]>([]);
-  const [workouts, setWorkouts] = useState<any[]>([]);
+interface Workout {
+  caloriesBurned: number;
+  createdAt: Timestamp;
+}
 
-  /* ---------- REAL-TIME FIRESTORE SUBSCRIPTIONS ---------- */
-  useEffect(() => {
-  if (!uid) return;
-
-  const unsubUser = onSnapshot(doc(db, "users", uid), (snap) => {
-    if (snap.exists()) setUser(snap.data());
-  });
-
-  const unsubMeals = onSnapshot(
-    collection(db, "users", uid, "meals"),
-    (snap) => setMeals(snap.docs.map(d => d.data()))
-  );
-
-  const unsubWorkouts = onSnapshot(
-    collection(db, "users", uid, "workouts"),
-    (snap) => setWorkouts(snap.docs.map(d => d.data()))
-  );
-
-  return () => {
-    unsubUser();
-    unsubMeals();
-    unsubWorkouts();
+interface UserData {
+  weight?: number;
+  goalStartWeight?: number;
+  targets?: {
+    calories: number;
   };
-}, [uid]);
+}
 
+export function useProgressMetrics(range: Range) {
+  const { user } = useAuth();
+  const uid = user?.uid;
 
-  /* ---------- DATE WINDOW ---------- */
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+
+  useEffect(() => {
+    if (!uid) return;
+
+    const unsubUser = onSnapshot(doc(db, "users", uid), (snap) => {
+      if (snap.exists()) setUserData(snap.data() as UserData);
+    });
+
+    const unsubMeals = onSnapshot(
+      collection(db, "users", uid, "meals"),
+      (snap) => setMeals(snap.docs.map(d => d.data() as Meal))
+    );
+
+    const unsubWorkouts = onSnapshot(
+      collection(db, "users", uid, "workouts"),
+      (snap) => setWorkouts(snap.docs.map(d => d.data() as Workout))
+    );
+
+    return () => {
+      unsubUser();
+      unsubMeals();
+      unsubWorkouts();
+    };
+  }, [uid]);
+
   const startDate = useMemo(() => {
     return startOfDay(subDays(new Date(), range - 1));
   }, [range]);
 
-  /* ---------- WEIGHT CHANGE ---------- */
   const weightChange = useMemo(() => {
-    if (!user?.goalStartWeight || !user?.weight) return 0;
-    return user.weight - user.goalStartWeight;
-  }, [user]);
+    if (!userData?.goalStartWeight || !userData?.weight) return 0;
+    return userData.weight - userData.goalStartWeight;
+  }, [userData]);
 
-  /* ---------- WORKOUT CONSISTENCY ---------- */
   const workoutConsistency = useMemo(() => {
     if (!workouts.length) return 0;
 
@@ -77,9 +80,8 @@ export function useProgressMetrics(range: Range) {
     return Math.round((daysWithWorkout.size / range) * 100);
   }, [workouts, startDate, range]);
 
-  /* ---------- CALORIE ADHERENCE ---------- */
   const calorieAdherence = useMemo(() => {
-    if (!meals.length || !user?.targets?.calories) return 0;
+    if (!meals.length || !userData?.targets?.calories) return 0;
 
     const dailyCalories = new Map<string, number>();
 
@@ -94,16 +96,16 @@ export function useProgressMetrics(range: Range) {
 
     let compliantDays = 0;
     dailyCalories.forEach(total => {
-      if (total <= user.targets.calories) compliantDays++;
+      if (total <= userData.targets!.calories) compliantDays++;
     });
 
     return Math.round((compliantDays / range) * 100);
-  }, [meals, user, startDate, range]);
+  }, [meals, userData, startDate, range]);
 
   return {
     weightChange,
     workoutConsistency,
     calorieAdherence,
-    loading: !user,
+    loading: !userData,
   };
 }

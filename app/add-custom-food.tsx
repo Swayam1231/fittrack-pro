@@ -4,40 +4,24 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { auth, db } from "../src/firebase/firebase";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
+import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
+import { Timestamp } from "firebase/firestore";
+import { FirestoreService } from "../src/services/firestore.service";
+import { useAuth } from "../src/context/AuthContext";
 import { useTheme } from "../src/context/ThemeContext";
-
-/* ================= STYLES ================= */
-
-const styles = StyleSheet.create({
-  container: { padding: 16 },
-  title: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  button: {
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  buttonText: { color: "#fff", fontWeight: "600" },
-});
 
 /* ================= COMPONENT ================= */
 
 export default function AddCustomFood() {
   const { colors } = useTheme();
   const router = useRouter();
-  const uid = auth.currentUser?.uid;
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
@@ -48,7 +32,7 @@ export default function AddCustomFood() {
   const saveFood = async () => {
     if (!uid || !name || !calories) return;
 
-    await addDoc(collection(db, "users", uid, "customFoods"), {
+    await FirestoreService.addCustomFood(uid, {
       name: name.trim(),
       caloriesPer100g: Number(calories),
       proteinPer100g: Number(protein) || 0,
@@ -63,103 +47,82 @@ export default function AddCustomFood() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Add Custom Food (per 100g)
-        </Text>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <Animated.View entering={FadeInUp.duration(600)}>
+            <Text style={{ fontSize: 28, fontWeight: "800", color: colors.textPrimary, marginBottom: 8, letterSpacing: -1 }}>Custom Food</Text>
+            <Text style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 32 }}>Add nutritional info per 100g</Text>
+        </Animated.View>
 
-        {/* FOOD NAME */}
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            },
-          ]}
-          placeholder="Food name"
-          placeholderTextColor={colors.textSecondary}
-          value={name}
-          onChangeText={setName}
-        />
+        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={{ gap: 16 }}>
+            <View>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 }}>Food Name</Text>
+                <TextInput
+                    style={{ backgroundColor: colors.card, borderRadius: 12, height: 50, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
+                    placeholder="e.g. Grandma's Secret Stew"
+                    placeholderTextColor={colors.textSecondary}
+                    value={name}
+                    onChangeText={setName}
+                />
+            </View>
 
-        {/* CALORIES */}
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            },
-          ]}
-          keyboardType="numeric"
-          placeholder="Calories per 100g"
-          placeholderTextColor={colors.textSecondary}
-          value={calories}
-          onChangeText={setCalories}
-        />
+            <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 }}>Calories</Text>
+                    <TextInput
+                        style={{ backgroundColor: colors.card, borderRadius: 12, height: 50, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
+                        keyboardType="numeric"
+                        placeholder="kcal"
+                        placeholderTextColor={colors.textSecondary}
+                        value={calories}
+                        onChangeText={setCalories}
+                    />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 }}>Protein</Text>
+                    <TextInput
+                        style={{ backgroundColor: colors.card, borderRadius: 12, height: 50, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
+                        keyboardType="numeric"
+                        placeholder="g"
+                        placeholderTextColor={colors.textSecondary}
+                        value={protein}
+                        onChangeText={setProtein}
+                    />
+                </View>
+            </View>
 
-        {/* PROTEIN */}
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            },
-          ]}
-          keyboardType="numeric"
-          placeholder="Protein (g)"
-          placeholderTextColor={colors.textSecondary}
-          value={protein}
-          onChangeText={setProtein}
-        />
+            <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 }}>Carbs</Text>
+                    <TextInput
+                        style={{ backgroundColor: colors.card, borderRadius: 12, height: 50, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
+                        keyboardType="numeric"
+                        placeholder="g"
+                        placeholderTextColor={colors.textSecondary}
+                        value={carbs}
+                        onChangeText={setCarbs}
+                    />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 }}>Fats</Text>
+                    <TextInput
+                        style={{ backgroundColor: colors.card, borderRadius: 12, height: 50, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
+                        keyboardType="numeric"
+                        placeholder="g"
+                        placeholderTextColor={colors.textSecondary}
+                        value={fats}
+                        onChangeText={setFats}
+                    />
+                </View>
+            </View>
 
-        {/* CARBS */}
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            },
-          ]}
-          keyboardType="numeric"
-          placeholder="Carbs (g)"
-          placeholderTextColor={colors.textSecondary}
-          value={carbs}
-          onChangeText={setCarbs}
-        />
-
-        {/* FATS */}
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            },
-          ]}
-          keyboardType="numeric"
-          placeholder="Fats (g)"
-          placeholderTextColor={colors.textSecondary}
-          value={fats}
-          onChangeText={setFats}
-        />
-
-        {/* SAVE */}
-        <Pressable
-          onPress={saveFood}
-          style={[styles.button, { backgroundColor: colors.accent }]}
-        >
-          <Text style={styles.buttonText}>Save</Text>
-        </Pressable>
-      </View>
+            <Pressable
+                onPress={saveFood}
+                style={{ backgroundColor: colors.primary, height: 56, borderRadius: 18, alignItems: "center", justifyContent: "center", marginTop: 24, shadowColor: colors.primary, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }}
+            >
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "800" }}>Save Food</Text>
+            </Pressable>
+        </Animated.View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
