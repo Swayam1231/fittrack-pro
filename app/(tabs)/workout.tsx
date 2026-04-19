@@ -58,7 +58,7 @@ export default function Training() {
         <Text style={[styles.brand, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>PulseMetrics</Text>
         <Pressable onPress={() => router.push("../profile")} style={styles.avatarBtn}>
            <Image 
-             source={{ uri: user?.photoURL || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqpISx7NHE8_WIfVQ8mdvZWx7hBsvUTHzic8Y300iJpFqLBpXFsHUOtz_XogUE5mTrosJ3cKauc1yPr4xpdupwDBUL8BqqbwwKFR08vqK1Agi5aKOjy4DkLinV_WEe5Dq-HifWU7KwKIsgSFNU6wLrx8u8NSCc6oCIhDewxgXTaFw73I2Qxe7kB0kgDKO9LVMq3Ngs9HuZr-GYfJbNu_fII2Us0W5NG3lFqHDqmQa4_iGrV8rlV7Lr_bf9kMLp7j00iHifbZmAiRI' }} 
+             source={user?.photoURL ? { uri: user.photoURL } : require("../../assets/images/default-avatar.png")} 
              style={styles.avatar} 
            />
         </Pressable>
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
   track: { height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.05)' },
   fill: { height: '100%', borderRadius: 4 },
   programCard: { borderRadius: 32, padding: 32, minHeight: 180, justifyContent: 'space-between' },
+  programTop: {},
   programIconRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   programLabel: { fontSize: 11, letterSpacing: 1 },
   programName: { fontSize: 22, letterSpacing: -0.5 },

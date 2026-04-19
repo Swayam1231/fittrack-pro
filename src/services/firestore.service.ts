@@ -33,9 +33,11 @@ export interface Meal {
 export interface Workout {
   id?: string;
   name: string;
+  type?: string;
   exercises: any[];
   duration: number;
   caloriesBurned: number;
+  totalVolume?: number;
   createdAt: Timestamp;
 }
 
@@ -50,6 +52,7 @@ export interface UserProfile {
   uid: string;
   displayName: string;
   weight?: number;
+  height?: number;
   goalWeight?: number;
   goalStartWeight?: number;
   streak?: number;

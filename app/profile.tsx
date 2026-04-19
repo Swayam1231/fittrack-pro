@@ -55,7 +55,7 @@ export default function Profile() {
                <View style={[styles.avatarGlow, { backgroundColor: `${colors.primary}15` }]} />
                <View style={[styles.avatarPlate, { backgroundColor: colors.surfaceContainerLow }]}>
                   <Image 
-                    source={{ uri: user.photoURL || 'https://lh3.googleusercontent.com/aidapublic/AB6AXuAn-pM9QW7qD0p9y8-zG3X7_M-L-C-K-U-z-I-R-Y-B-K-Q-P-G-A-O-I-L-U-S-T-R-A-T-I-O-N' }} 
+                    source={user.photoURL ? { uri: user.photoURL } : require("../assets/images/default-avatar.png")} 
                     style={styles.avatarImg} 
                   />
                </View>
@@ -67,29 +67,29 @@ export default function Profile() {
          </View>
 
          {/* --- KEY METRICS --- */}
-         <View style={styles.metricsGrid}>
-            <MetricCard label="Weight" val={profile.weight} unit="kg" />
-            <MetricCard label="Height" val={profile.height} unit="cm" />
-            <MetricCard label="Lean Mass" val={leanMass.toFixed(1)} unit="kg" highlight />
-         </View>
-
-         {/* --- PROGRESS RETROSPECTIVE --- */}
-         <View style={styles.contentBlock}>
-            <ProgressOverview />
-         </View>
-
-         {/* --- GOALS BLOCK --- */}
-         <View style={styles.contentBlock}>
-            <Text style={[styles.blockTitle, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>Biometric Calibration</Text>
-            <View style={[styles.blockCard, { backgroundColor: colors.surfaceContainerLow }]}>
-               <GoalsMilestones
-                   currentWeight={profile.weight}
-                   targetWeight={profile.goalWeight ?? null}
-                   goalStartWeight={profile.goalStartWeight ?? null}
-                   unit="metric"
-               />
-            </View>
-         </View>
+          <View style={styles.grid}>
+             <MetricCard label="Weight" val={profile.weight ?? '--'} unit="kg" />
+             <MetricCard label="Height" val={profile.height ?? '--'} unit="cm" />
+             <MetricCard label="Lean Mass" val={leanMass > 0 ? leanMass.toFixed(1) : '--'} unit="kg" highlight />
+          </View>
+ 
+          {/* --- PROGRESS RETROSPECTIVE --- */}
+          <View style={styles.contentBlock}>
+             <ProgressOverview />
+          </View>
+ 
+          {/* --- GOALS BLOCK --- */}
+          <View style={styles.contentBlock}>
+             <Text style={[styles.blockTitle, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>Biometric Calibration</Text>
+             <View style={[styles.blockCard, { backgroundColor: colors.surfaceContainerLow }]}>
+                <GoalsMilestones
+                    currentWeight={profile.weight ?? 0}
+                    targetWeight={profile.goalWeight ?? null}
+                    goalStartWeight={profile.goalStartWeight ?? null}
+                    unit="kg"
+                />
+             </View>
+          </View>
 
          {/* --- SYSTEM PREFERENCES --- */}
          <View style={styles.contentBlock}>
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 36, letterSpacing: -1, marginTop: 24 },
   tierBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 100, marginTop: 8 },
   tierText: { fontSize: 10, letterSpacing: 1.5 },
-  metricsGrid: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 40 },
+  grid: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 40 },
   metricCard: { flex: 1, padding: 20, borderRadius: 24, justifyContent: 'space-between', minHeight: 120, overflow: 'hidden' },
   metricLabel: { fontSize: 9, letterSpacing: 0.5 },
   metricValRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 12 },

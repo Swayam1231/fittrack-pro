@@ -99,7 +99,7 @@ export default function ActiveLogger() {
     const exerciseData = catalog.find(c => c.name === name);
     setExercises((p) => [...p, { 
       name, 
-      target: exerciseData?.instructions?.length ? `Last: ${remembered?.weight}kg x ${remembered?.reps}` : undefined,
+      target: remembered ? `Last: ${remembered.weight}kg x ${remembered.reps}` : undefined,
       sets: [{ reps: remembered ? String(remembered.reps) : "", weight: remembered ? String(remembered.weight) : "", completed: false }] 
     }]);
   };

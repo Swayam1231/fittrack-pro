@@ -66,7 +66,7 @@ export default function Performance() {
         <Text style={[styles.brand, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>PulseMetrics</Text>
         <Pressable onPress={() => router.push("../profile")} style={styles.avatarBtn}>
            <Image 
-             source={{ uri: user?.photoURL || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAn-pM9QW7qD0p9y8-zG3X7_M-L-C-K-U-z-I-R-Y-B-K-Q-P-G-A-O-I-L-U-S-T-R-A-T-I-O-N' }} 
+             source={user?.photoURL ? { uri: user.photoURL } : require("../../assets/images/default-avatar.png")} 
              style={styles.avatar} 
            />
         </Pressable>

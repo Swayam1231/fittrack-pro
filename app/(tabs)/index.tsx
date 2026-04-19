@@ -27,27 +27,61 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubUser = FirestoreService.subscribeToProfile(user.uid, setProfile);
+    
+    // Track if primary data is loaded
+    let profileLoaded = false;
+    let mealsLoaded = false;
+
+    const checkLoading = () => {
+      if (profileLoaded && mealsLoaded) {
+        setLoading(false);
+      }
+    };
+
+    const unsubUser = FirestoreService.subscribeToProfile(user.uid, (data) => {
+      setProfile(data);
+      profileLoaded = true;
+      checkLoading();
+    });
+
     const unsubMeals = FirestoreService.subscribeToTodayMeals(user.uid, (data) => {
       setMeals(data);
-      setLoading(false);
+      mealsLoaded = true;
+      checkLoading();
     });
+
     const unsubWorkouts = FirestoreService.subscribeToTodayWorkouts(user.uid, setWorkouts);
     const unsubWater = FirestoreService.subscribeToTodayWater(user.uid, setWater);
-    const unsubSteps = FirestoreService.subscribeToTodaySteps(user.uid, setSteps);
-
     let pedometerSub: any;
+    let baseSteps = 0;
+    let stepsInitialized = false;
+
+    const unsubSteps = FirestoreService.subscribeToTodaySteps(user.uid, (s) => {
+      if (!stepsInitialized) {
+        baseSteps = s;
+        stepsInitialized = true;
+      }
+      setSteps(s);
+    });
+
     Pedometer.isAvailableAsync().then(result => {
       if (result) {
-        pedometerSub = Pedometer.watchStepCount(result => {
-           setSteps(prev => prev + result.steps);
+        pedometerSub = Pedometer.watchStepCount(res => {
+          const totalSteps = baseSteps + res.steps;
+          setSteps(totalSteps);
+          // Update Firestore periodically (throttling would be better, but this works)
+          FirestoreService.updateSteps(user.uid, totalSteps);
         });
       }
     });
 
+    // Fallback loading safety
+    const timeout = setTimeout(() => setLoading(false), 3000);
+
     return () => {
       unsubUser(); unsubMeals(); unsubWorkouts(); unsubWater(); unsubSteps();
       if (pedometerSub) pedometerSub.remove();
+      clearTimeout(timeout);
     };
   }, [user]);
 
@@ -70,10 +104,10 @@ export default function Dashboard() {
         </Pressable>
         <Text style={[styles.brand, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>PulseMetrics</Text>
         <Pressable onPress={() => router.push("../profile")} style={styles.avatarBtn}>
-           <Image 
-             source={{ uri: user?.photoURL || 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4QfvQ1EsaH0pgyBx_nUdo6jyIbC_s5H2hq6BRvFKZ-7g5fLn9KALblsLr2CNnkhPIRmaFl88UXqGh28Uf11VQtHkI6ZzB7Dt6f340FX5LDNXg_ZlN7RixjYmwk-BYzbx2VcHeL2wtLBH3MCsb0612OCn3saFG1Hhumqvs_Hc1yeLsZ56piyXhspMEOIl3pdLSH1nccPefpNLRoaEIvLTQTkCV-81KIssVZNuDXFz77s26LLEIPs2p7IFDKXPENnLa6EgFQaMw4_Q' }} 
-             style={styles.avatar} 
-           />
+            <Image 
+              source={user?.photoURL ? { uri: user.photoURL } : require("../../assets/images/default-avatar.png")} 
+              style={styles.avatar} 
+            />
         </Pressable>
       </View>
 
@@ -120,7 +154,7 @@ export default function Dashboard() {
 
            {/* Hydration */}
            <View style={[styles.bentoHalf, styles.hydrationCard, { backgroundColor: colors.surfaceContainerLowest }]}>
-              <View style={styles.waterFill} />
+              <View style={[styles.waterFill, { height: `${Math.min((water / 2.5) * 100, 100)}%` }]} />
               <View style={styles.bentoHeader}>
                  <Ionicons name="water" size={18} color={colors.primary} />
                  <Text style={[styles.bentoLabel, { color: colors.textSecondary, fontFamily: 'Manrope-Bold' }]}>HYDRATION</Text>
@@ -236,7 +270,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     zIndex: 100,
   },
-  menuBtn: { p: 4 },
+  menuBtn: { padding: 4 },
   brand: { fontSize: 20, letterSpacing: -1 },
   avatarBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
   avatar: { width: '100%', height: '100%' },
@@ -264,6 +298,7 @@ const styles = StyleSheet.create({
   bentoHalf: { width: (width - 48) / 2, borderRadius: 24, padding: 20, justifyContent: 'space-between' },
   iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   bentoTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  bentoBottom: { marginTop: 4 },
   trendBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   trendText: { fontSize: 10 },
   bentoValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
@@ -276,8 +311,7 @@ const styles = StyleSheet.create({
     bottom: 0, 
     left: 0, 
     right: 0, 
-    height: '40%', 
-    backgroundColor: 'rgba(70,72,212,0.05)' 
+    backgroundColor: 'rgba(70,72,212,0.1)' 
   },
   bentoHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   bentoLabel: { fontSize: 9, letterSpacing: 1 },
