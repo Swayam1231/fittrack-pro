@@ -211,7 +211,7 @@ export const FirestoreService = {
 
   deleteWorkout: async (uid: string, workoutId: string) => {
     await deleteDoc(doc(db, "users", uid, "workouts", workoutId));
-  }
+  },
   // --- Custom Foods ---
   addCustomFood: async (uid: string, food: any) => {
     return await addDoc(collection(db, "users", uid, "customFoods"), food);
@@ -283,5 +283,29 @@ export const FirestoreService = {
     const today = format(new Date(), "yyyy-MM-dd");
     const docRef = doc(db, "users", uid, "steps", today);
     await setDoc(docRef, { count, updatedAt: Timestamp.now() }, { merge: true });
+  },
+
+  // --- Metrics ---
+  subscribeToRecentMetrics: (uid: string, callback: (metrics: any) => void) => {
+    const q = query(
+      collection(db, "users", uid, "metrics"),
+      orderBy("date", "desc")
+    );
+    return onSnapshot(q, (snap) => {
+      const data: any = {};
+      snap.docs.forEach(d => {
+        const m = d.data();
+        if (!data[m.type]) data[m.type] = m.value;
+      });
+      callback(data);
+    });
+  },
+
+  logMetric: async (uid: string, type: string, value: number) => {
+    return await addDoc(collection(db, "users", uid, "metrics"), {
+      type,
+      value,
+      date: Timestamp.now()
+    });
   }
 };

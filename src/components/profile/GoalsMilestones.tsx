@@ -1,14 +1,14 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { formatWeight, UnitSystem } from "../../utils/unit";
 import { useTheme } from "../../context/ThemeContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 type Props = {
   currentWeight: number;
   targetWeight: number | null;
   goalStartWeight: number | null;
-  unit: UnitSystem;
+  unit: string;
 };
 
 export default function GoalsMilestones({
@@ -18,213 +18,113 @@ export default function GoalsMilestones({
   unit,
 }: Props) {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, gradients } = useTheme();
 
-  /* ---------- NO GOAL STATE ---------- */
   if (!targetWeight || typeof goalStartWeight !== "number") {
     return (
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <Header
-          onEdit={() => router.push("/edit-goal-weight")}
-          titleColor={colors.textPrimary}
-          editColor={colors.accent}
-        />
-        <Text style={{ color: colors.textSecondary }}>
-          Set a goal weight to start tracking milestones.
-        </Text>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.surfaceContainerLow }]}>
+         <Text style={[styles.emptyText, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Medium' }]}>
+           Initialize target parameters to begin operative tracking.
+         </Text>
       </View>
     );
   }
 
-  /* ---------- PROGRESS CALCULATION ---------- */
   const startWeight = goalStartWeight;
   const isFatLoss = targetWeight < startWeight;
-
-  const progressDelta = isFatLoss
-    ? Math.max(0, startWeight - currentWeight)
-    : Math.max(0, currentWeight - startWeight);
-
+  const progressDelta = isFatLoss ? (startWeight - currentWeight) : (currentWeight - startWeight);
   const totalDelta = Math.abs(startWeight - targetWeight);
-
-  const progressPercent =
-    totalDelta > 0
-      ? Math.min((progressDelta / totalDelta) * 100, 100)
-      : 0;
-
-  const milestones = [
-    { percent: 25, label: "25%" },
-    { percent: 50, label: "50%" },
-    { percent: 75, label: "75%" },
-    { percent: 100, label: "Goal" },
-  ];
+  const progressPercent = Math.max(0, Math.min((progressDelta / totalDelta) * 100, 100));
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card }]}>
-      <Header
-        onEdit={() => router.push("/edit-goal-weight")}
-        titleColor={colors.textPrimary}
-        editColor={colors.accent}
-      />
-
-      {/* CURRENT GOAL */}
-      <View
-        style={[
-          styles.goalBox,
-          { backgroundColor: colors.background },
-        ]}
-      >
-        <Text style={[styles.bold, { color: colors.textPrimary }]}>
-          Current Goal
-        </Text>
-
-        <Text style={{ color: colors.textPrimary }}>
-          Reach {formatWeight(targetWeight, unit)}
-        </Text>
-
-        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-          Started at {formatWeight(startWeight, unit)} • Now{" "}
-          {formatWeight(currentWeight, unit)}
-        </Text>
-
-        {/* PROGRESS BAR */}
-        <View
-          style={[
-            styles.progressBg,
-            { backgroundColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${progressPercent}%`,
-                backgroundColor: colors.accent,
-              },
-            ]}
-          />
-        </View>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>GOALS & MILESTONES</Text>
+        <Pressable onPress={() => router.push("/edit-goal-weight")}>
+           <Text style={[styles.editLink, { color: colors.primary, fontFamily: 'Manrope-Bold' }]}>EDIT</Text>
+        </Pressable>
       </View>
 
-      {/* MILESTONES */}
-      <Text style={[styles.bold, { color: colors.textPrimary }]}>
-        Milestones
-      </Text>
+      <View style={[styles.targetCard, { backgroundColor: colors.surfaceContainerLowest }]}>
+         <Text style={[styles.targetLabel, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>TARGET WEIGHT</Text>
+         <View style={styles.targetRow}>
+            <Text style={[styles.targetValue, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{targetWeight}</Text>
+            <Text style={[styles.targetUnit, { color: colors.primary, fontFamily: 'SpaceGrotesk-Bold' }]}>{unit}</Text>
+         </View>
 
-      <View style={styles.milestoneRow}>
-        {milestones.map((m) => {
-          const achieved = progressPercent >= m.percent;
+         <View style={styles.statsTimeline}>
+            <StatColumn label="START" value={startWeight} unit={unit} />
+            <View style={[styles.divider, { backgroundColor: 'rgba(0,0,0,0.05)' }]} />
+            <StatColumn label="CURRENT" value={currentWeight} unit={unit} isNew />
+         </View>
 
-          return (
-            <View
-              key={m.percent}
-              style={[
-                styles.milestoneCard,
-                {
-                  backgroundColor: achieved
-                    ? colors.background
-                    : colors.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name={
-                  achieved
-                    ? "checkmark-circle"
-                    : "ellipse-outline"
-                }
-                size={20}
-                color={
-                  achieved
-                    ? colors.accent
-                    : colors.textSecondary
-                }
-              />
-              <Text
-                style={{
-                  fontSize: 11,
-                  marginTop: 6,
-                  fontWeight: "500",
-                  color: colors.textPrimary,
-                }}
-              >
-                {m.label}
-              </Text>
-            </View>
-          );
-        })}
+         <View style={[styles.track, { backgroundColor: colors.surfaceContainerHighest }]}>
+            <LinearGradient 
+               colors={gradients.primary} 
+               start={{x:0, y:0}} 
+               end={{x:1, y:0}} 
+               style={[styles.fill, { width: `${progressPercent}%` }]} 
+            />
+         </View>
+      </View>
+
+      <View style={styles.milestoneGrid}>
+         <TimelineMarker percent={25} achieved={progressPercent >= 25} />
+         <TimelineMarker percent={50} achieved={progressPercent >= 50} />
+         <TimelineMarker percent={75} achieved={progressPercent >= 75} />
+         <TimelineMarker percent={100} achieved={progressPercent >= 100} label="GOAL" />
       </View>
     </View>
   );
 }
 
-/* ---------- HEADER ---------- */
-function Header({
-  onEdit,
-  titleColor,
-  editColor,
-}: {
-  onEdit: () => void;
-  titleColor: string;
-  editColor: string;
-}) {
+function StatColumn({ label, value, unit, isNew }: any) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.header}>
-      <Text style={[styles.title, { color: titleColor }]}>
-        Goals & Milestones
-      </Text>
-      <Pressable onPress={onEdit}>
-        <Text style={{ color: editColor, fontWeight: "600" }}>
-          Edit
-        </Text>
-      </Pressable>
+    <View style={styles.statCol}>
+       <Text style={[styles.statLabel, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>{label}</Text>
+       <View style={styles.statValRow}>
+          <Text style={[styles.statVal, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{value}</Text>
+          <Text style={[styles.statUnit, { color: colors.textSecondary, fontFamily: 'SpaceGrotesk-Bold' }]}>{unit}</Text>
+       </View>
     </View>
   );
 }
 
-/* ---------- STYLES ---------- */
+function TimelineMarker({ percent, achieved, label }: any) {
+  const { colors, gradients } = useTheme();
+  return (
+    <View style={[styles.marker, { backgroundColor: achieved ? colors.surfaceContainerHighest : colors.surfaceContainerLow }]}>
+       <Text style={[styles.markerText, { color: achieved ? colors.primary : colors.onSurfaceVariant, fontFamily: 'SpaceGrotesk-Bold' }]}>
+          {label || `${percent}%`}
+       </Text>
+       {achieved && <Ionicons name="checkmark" size={10} color={colors.primary} style={{ marginLeft: 4 }} />}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  bold: {
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  goalBox: {
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  progressBg: {
-    height: 6,
-    borderRadius: 4,
-    marginTop: 12,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  milestoneRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  milestoneCard: {
-    width: "22%",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-  },
+  container: { width: '100%' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  title: { fontSize: 11, letterSpacing: 1.5 },
+  editLink: { fontSize: 11 },
+  targetCard: { borderRadius: 24, padding: 24, marginBottom: 20 },
+  targetLabel: { fontSize: 9, letterSpacing: 1 },
+  targetRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 8, marginBottom: 24 },
+  targetValue: { fontSize: 48, letterSpacing: -1 },
+  targetUnit: { fontSize: 18, marginLeft: 4 },
+  statsTimeline: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  statCol: { flex: 1 },
+  divider: { width: 1, height: 30, marginHorizontal: 20 },
+  statLabel: { fontSize: 9, letterSpacing: 0.5, marginBottom: 4 },
+  statValRow: { flexDirection: 'row', alignItems: 'baseline' },
+  statVal: { fontSize: 20 },
+  statUnit: { fontSize: 11, marginLeft: 2, opacity: 0.6 },
+  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 2 },
+  milestoneGrid: { flexDirection: 'row', gap: 8 },
+  marker: { flex: 1, height: 40, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  markerText: { fontSize: 11 },
+  emptyContainer: { padding: 32, borderRadius: 24, alignItems: 'center' },
+  emptyText: { fontSize: 13, textAlign: 'center', opacity: 0.6 },
 });

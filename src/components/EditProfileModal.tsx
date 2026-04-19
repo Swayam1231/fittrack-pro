@@ -6,12 +6,17 @@ import {
   Modal,
   ScrollView,
   Alert,
+  StyleSheet,
+  Dimensions,
 } from "react-native";
 import { useEffect, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useTheme } from "../context/ThemeContext";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 /* ---- CALCULATION ENGINE ---- */
 import { calculateTargets } from "../utils/calculateTargets";
@@ -48,23 +53,10 @@ function mapActivity(level: FitnessLevel) {
   }
 }
 
-/* ---- FITNESS LEVEL META ---- */
-const FITNESS_LEVEL_META: Record<
-  FitnessLevel,
-  { icon: any; hint: string }
-> = {
-  Beginner: {
-    icon: "leaf-outline",
-    hint: "New to training or inconsistent workouts",
-  },
-  Intermediate: {
-    icon: "barbell-outline",
-    hint: "Training regularly (3–5 days/week)",
-  },
-  Advanced: {
-    icon: "flame-outline",
-    hint: "High volume, intense training experience",
-  },
+const FITNESS_LEVEL_META: Record<FitnessLevel, { icon: any; hint: string }> = {
+  Beginner: { icon: "leaf-outline", hint: "Just starting or returning" },
+  Intermediate: { icon: "barbell-outline", hint: "Consistent 3-5 days/week" },
+  Advanced: { icon: "flame-outline", hint: "High volume intensity" },
 };
 
 export default function EditProfileModal({
@@ -75,28 +67,22 @@ export default function EditProfileModal({
   onClose: () => void;
 }) {
   const uid = auth.currentUser?.uid;
-  const { colors } = useTheme();
+  const { colors, gradients } = useTheme();
 
-  /* ---- STATE ---- */
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("Male");
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
-  const [fitnessLevel, setFitnessLevel] =
-    useState<FitnessLevel>("Intermediate");
-  const [primaryGoal, setPrimaryGoal] =
-    useState<PrimaryGoal>("Fat Loss");
+  const [fitnessLevel, setFitnessLevel] = useState<FitnessLevel>("Intermediate");
+  const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>("Fat Loss");
 
-  /* ---- LOAD PROFILE ---- */
   useEffect(() => {
     if (!visible || !uid) return;
-
     (async () => {
       const snap = await getDoc(doc(db, "users", uid));
       if (!snap.exists()) return;
-
       const d = snap.data();
       setName(d.name ?? "");
       setGender(d.gender ?? "Male");
@@ -111,13 +97,11 @@ export default function EditProfileModal({
 
   if (!uid) return null;
 
-  /* ---- SAVE ---- */
   const saveProfile = async () => {
     if (!name || !age || !height || !weight) {
-      Alert.alert("Missing fields", "Please fill all required fields.");
+      Alert.alert("Missing fields", "Please fill required fields.");
       return;
     }
-
     const ageNum = Number(age);
     const heightNum = Number(height);
     const weightNum = Number(weight);
@@ -144,215 +128,119 @@ export default function EditProfileModal({
       primaryGoal,
       targets,
     });
-
     onClose();
   };
 
-  /* ---- UI ---- */
   return (
     <Modal visible={visible} animationType="slide">
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "700",
-              marginBottom: 20,
-              color: colors.textPrimary,
-            }}
-          >
-            Edit Core Profile
-          </Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={styles.header}>
+           <Text style={[styles.title, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>Core Profile</Text>
+           <Pressable onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+           </Pressable>
+        </View>
 
-          <Label text="Name *" />
-          <Input value={name} onChangeText={setName} />
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.section}>
+             <Text style={[styles.label, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>FULL NAME</Text>
+             <TextInput 
+               value={name} 
+               onChangeText={setName} 
+               style={[styles.input, { backgroundColor: colors.surfaceContainerLow, color: colors.textPrimary, fontFamily: 'Manrope-Medium' }]} 
+             />
+          </View>
 
-          <Segment
-            title="Gender *"
-            options={["Male", "Female"]}
-            value={gender}
-            onChange={setGender}
-          />
+          <View style={styles.section}>
+             <Text style={[styles.label, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>BIOMETRICS</Text>
+             <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                   <Text style={[styles.subLabel, { color: colors.textSecondary }]}>Age</Text>
+                   <TextInput value={age} onChangeText={setAge} keyboardType="number-pad" style={[styles.inputSmall, { backgroundColor: colors.surfaceContainerLow, color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]} />
+                </View>
+                <View style={{ flex: 1, marginHorizontal: 12 }}>
+                   <Text style={[styles.subLabel, { color: colors.textSecondary }]}>Height (cm)</Text>
+                   <TextInput value={height} onChangeText={setHeight} keyboardType="number-pad" style={[styles.inputSmall, { backgroundColor: colors.surfaceContainerLow, color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]} />
+                </View>
+                <View style={{ flex: 1 }}>
+                   <Text style={[styles.subLabel, { color: colors.textSecondary }]}>Weight (kg)</Text>
+                   <TextInput value={weight} onChangeText={setWeight} keyboardType="number-pad" style={[styles.inputSmall, { backgroundColor: colors.surfaceContainerLow, color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]} />
+                </View>
+             </View>
+          </View>
 
-          <Label text="Age *" />
-          <Input value={age} onChangeText={setAge} keyboardType="number-pad" />
+          <View style={styles.section}>
+             <Text style={[styles.label, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>FITNESS LEVEL</Text>
+             {(["Beginner", "Intermediate", "Advanced"] as FitnessLevel[]).map((level) => {
+               const selected = fitnessLevel === level;
+               const meta = FITNESS_LEVEL_META[level];
+               return (
+                 <Pressable
+                   key={level}
+                   onPress={() => setFitnessLevel(level)}
+                   style={[styles.levelBtn, { backgroundColor: selected ? colors.primary : colors.surfaceContainerLow }]}
+                 >
+                   <Ionicons name={meta.icon} size={20} color={selected ? "#fff" : colors.primary} />
+                   <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.levelName, { color: selected ? "#fff" : colors.textPrimary, fontFamily: 'Manrope-Bold' }]}>{level}</Text>
+                      <Text style={[styles.levelHint, { color: selected ? "rgba(255,255,255,0.7)" : colors.textSecondary, fontFamily: 'Manrope-Medium' }]}>{meta.hint}</Text>
+                   </View>
+                   {selected && <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                 </Pressable>
+               );
+             })}
+          </View>
 
-          <Label text="Height (cm) *" />
-          <Input value={height} onChangeText={setHeight} keyboardType="number-pad" />
+          <View style={styles.section}>
+             <Text style={[styles.label, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>PRIMARY GOAL</Text>
+             <View style={styles.goalRow}>
+                {(["Fat Loss", "Maintenance", "Muscle Gain"] as PrimaryGoal[]).map(g => (
+                   <Pressable 
+                     key={g} 
+                     onPress={() => setPrimaryGoal(g)}
+                     style={[styles.goalBtn, { backgroundColor: primaryGoal === g ? colors.secondary : colors.surfaceContainerLow }]}
+                   >
+                      <Text style={[styles.goalText, { color: primaryGoal === g ? "#fff" : colors.textPrimary, fontFamily: 'Manrope-Bold' }]}>{g.split(" ")[0]}</Text>
+                   </Pressable>
+                ))}
+             </View>
+          </View>
 
-          <Label text="Weight (kg) *" />
-          <Input value={weight} onChangeText={setWeight} keyboardType="number-pad" />
-
-          <Label text="Body Fat % (optional)" />
-          <Input
-            value={bodyFat}
-            onChangeText={setBodyFat}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 22"
-          />
-
-          {/* 🔥 FITNESS LEVEL WITH ICONS */}
-          <Label text="Fitness Level *" />
-          {(["Beginner", "Intermediate", "Advanced"] as FitnessLevel[]).map(
-            (level) => {
-              const selected = fitnessLevel === level;
-              const meta = FITNESS_LEVEL_META[level];
-
-              return (
-                <Pressable
-                  key={level}
-                  onPress={() => setFitnessLevel(level)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 14,
-                    borderRadius: 14,
-                    marginBottom: 10,
-                    backgroundColor: selected
-                      ? colors.accent
-                      : colors.card,
-                  }}
-                >
-                  <Ionicons
-                    name={meta.icon}
-                    size={22}
-                    color={selected ? "#fff" : colors.textPrimary}
-                    style={{ marginRight: 12 }}
-                  />
-
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontWeight: "700",
-                        color: selected ? "#fff" : colors.textPrimary,
-                      }}
-                    >
-                      {level}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        marginTop: 2,
-                        color: selected
-                          ? "#E5E7EB"
-                          : colors.textSecondary,
-                      }}
-                    >
-                      {meta.hint}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            }
-          )}
-
-          <Segment
-            title="Primary Goal *"
-            options={["Fat Loss", "Maintenance", "Muscle Gain"]}
-            value={primaryGoal}
-            onChange={setPrimaryGoal}
-          />
-
-          <Pressable
-            onPress={saveProfile}
-            style={{
-              marginTop: 32,
-              padding: 16,
-              borderRadius: 14,
-              backgroundColor: colors.accent,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-              Save & Recalculate
-            </Text>
-          </Pressable>
-
-          <Pressable onPress={onClose} style={{ marginTop: 12 }}>
-            <Text style={{ textAlign: "center", color: colors.textSecondary }}>
-              Cancel
-            </Text>
-          </Pressable>
+          <View style={{ height: 40 }} />
         </ScrollView>
-      </View>
+
+        <View style={styles.footer}>
+           <Pressable onPress={saveProfile} style={styles.saveBtn}>
+              <LinearGradient colors={gradients.primary} style={styles.saveBtnGradient} start={{x:0, y:0}} end={{x:1, y:1}}>
+                 <Text style={[styles.saveBtnText, { fontFamily: 'Manrope-Bold' }]}>SAVE & RECALCULATE</Text>
+              </LinearGradient>
+           </Pressable>
+        </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-/* ---- REUSABLES ---- */
 
-function Label({ text }: { text: string }) {
-  const { colors } = useTheme();
-  return (
-    <Text
-      style={{
-        fontWeight: "600",
-        marginTop: 16,
-        marginBottom: 6,
-        color: colors.textPrimary,
-      }}
-    >
-      {text}
-    </Text>
-  );
-}
-
-function Input(props: any) {
-  const { colors } = useTheme();
-  return (
-    <TextInput
-      {...props}
-      style={{
-        borderRadius: 12,
-        padding: 14,
-        backgroundColor: colors.card,
-        color: colors.textPrimary,
-      }}
-      placeholderTextColor={colors.textSecondary}
-    />
-  );
-}
-
-/* ---- SEGMENT (unchanged) ---- */
-function Segment({
-  title,
-  options,
-  value,
-  onChange,
-}: {
-  title: string;
-  options: string[];
-  value: string;
-  onChange: (v: any) => void;
-}) {
-  const { colors } = useTheme();
-
-  return (
-    <>
-      <Label text={title} />
-      <View style={{ flexDirection: "row", borderRadius: 12, overflow: "hidden" }}>
-        {options.map((o) => (
-          <Pressable
-            key={o}
-            onPress={() => onChange(o)}
-            style={{
-              flex: 1,
-              paddingVertical: 12,
-              backgroundColor: value === o ? colors.accent : colors.border,
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                color: value === o ? "#fff" : colors.textPrimary,
-                fontWeight: "600",
-              }}
-            >
-              {o}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </>
-  );
-}
+const styles = StyleSheet.create({
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24 },
+  title: { fontSize: 24, letterSpacing: -1 },
+  closeBtn: { padding: 4 },
+  scroll: { paddingHorizontal: 24 },
+  section: { marginBottom: 32 },
+  label: { fontSize: 10, letterSpacing: 1.5, marginBottom: 12 },
+  subLabel: { fontSize: 12, marginBottom: 8, opacity: 0.6 },
+  input: { height: 56, borderRadius: 16, paddingHorizontal: 16, fontSize: 16 },
+  row: { flexDirection: 'row' },
+  inputSmall: { height: 50, borderRadius: 12, paddingHorizontal: 16, fontSize: 18, textAlign: 'center' },
+  levelBtn: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, marginBottom: 12 },
+  levelName: { fontSize: 15 },
+  levelHint: { fontSize: 12, marginTop: 2 },
+  goalRow: { flexDirection: 'row', gap: 8 },
+  goalBtn: { flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  goalText: { fontSize: 12 },
+  footer: { padding: 24, borderTopWidth: 0 },
+  saveBtn: { height: 64, borderRadius: 32, overflow: 'hidden' },
+  saveBtnGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { color: '#fff', fontSize: 16, letterSpacing: 0.5 },
+});

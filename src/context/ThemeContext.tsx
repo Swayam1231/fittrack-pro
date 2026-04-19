@@ -23,11 +23,18 @@ export type ThemeColors = {
   border: string;
   primary: string;
   secondary: string;
+  tertiary: string;
   accent: string;
   danger: string;
   success: string;
   warning: string;
   surface: string;
+  surfaceContainerLow: string;
+  surfaceContainerHigh: string;
+  surfaceContainerHighest: string;
+  surfaceContainerLowest: string;
+  onSurface: string;
+  onSurfaceVariant: string;
 };
 
 export type ThemeGradients = {
@@ -49,39 +56,53 @@ type ThemeContextType = {
    ===================================================== */
 
 const lightColors: ThemeColors = {
-  background: "#F8FAFC",
+  background: "#FCF9F8",
   card: "#FFFFFF",
-  textPrimary: "#0F172A",
-  textSecondary: "#64748B",
-  border: "#E2E8F0",
-  primary: "#6366F1", // Indigo
-  secondary: "#64748B",
-  accent: "#3B82F6", // Blue
-  danger: "#EF4444",
-  success: "#10B981",
-  warning: "#F59E0B",
-  surface: "#F1F5F9",
+  textPrimary: "#1C1B1B",
+  textSecondary: "#464554",
+  border: "#E5E2E1",
+  primary: "#4648D4",
+  secondary: "#8127CF",
+  tertiary: "#006C49",
+  accent: "#4648D4",
+  danger: "#BA1A1A",
+  success: "#00885D",
+  warning: "#FF8F00",
+  surface: "#FCF9F8",
+  surfaceContainerLow: "#F6F3F2",
+  surfaceContainerHigh: "#EAE7E7",
+  surfaceContainerHighest: "#E5E2E1",
+  surfaceContainerLowest: "#FFFFFF",
+  onSurface: "#1C1B1B",
+  onSurfaceVariant: "#464554",
 };
 
 const darkColors: ThemeColors = {
-  background: "#020617",
-  card: "#0F172A",
-  textPrimary: "#F8FAFC",
-  textSecondary: "#94A3B8",
-  border: "#1E293B",
-  primary: "#818CF8",
-  secondary: "#94A3B8",
-  accent: "#60A5FA",
-  danger: "#F87171",
-  success: "#34D399",
-  warning: "#FBBF24",
-  surface: "#1E293B",
+  background: "#0E0D0D",
+  card: "#161515",
+  textPrimary: "#FCF9F8",
+  textSecondary: "#928F8E",
+  border: "#262423",
+  primary: "#5C5FE3",
+  secondary: "#9B51E0",
+  tertiary: "#4EDEA3",
+  accent: "#5C5FE3",
+  danger: "#FF897D",
+  success: "#4AE2AF",
+  warning: "#FFB84D",
+  surface: "#0E0D0D",
+  surfaceContainerLow: "#161515",
+  surfaceContainerHigh: "#262423",
+  surfaceContainerHighest: "#313030",
+  surfaceContainerLowest: "#000000",
+  onSurface: "#FCF9F8",
+  onSurfaceVariant: "#928F8E",
 };
 
 const gradients: ThemeGradients = {
-  primary: ["#6366F1", "#4F46E5"],
-  secondary: ["#64748B", "#475569"],
-  accent: ["#3B82F6", "#2563EB"],
+  primary: ["#4648D4", "#8127CF"],
+  secondary: ["#8127CF", "#A855F7"],
+  accent: ["#00885D", "#4AE2AF"],
 };
 
 /* =====================================================

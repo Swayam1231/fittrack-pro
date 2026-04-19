@@ -1,66 +1,47 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions, TextInput, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
-import { startOfDay, format } from "date-fns";
+import { format } from "date-fns";
 import { FirestoreService } from "../../src/services/firestore.service";
-import { Card } from "../../src/components/Card";
 import { Loading } from "../../src/components/Loading";
 import { useTheme } from "../../src/context/ThemeContext";
 import { useAuth } from "../../src/context/AuthContext";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 
-/* ================= HELPERS ================= */
-
-function startOfDayDate(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
+const { width } = Dimensions.get("window");
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
-
-/* ================= COMPONENT ================= */
 
 export default function Nutrition() {
   const router = useRouter();
   const { user } = useAuth();
   const uid = user?.uid;
-  const { colors } = useTheme();
+  const { colors, gradients } = useTheme();
 
   const [date, setDate] = useState(new Date());
   const [meals, setMeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [changingDate, setChangingDate] = useState(false);
-
   const [targets, setTargets] = useState({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fats: 0,
+    calories: 2000,
+    protein: 150,
+    carbs: 200,
+    fats: 60,
   });
 
-  /* ---------- LOAD PROFILE TARGETS ---------- */
   useFocusEffect(
     useCallback(() => {
       if (!uid) return;
-      return FirestoreService.subscribeToProfile(uid, (data) => {
+      FirestoreService.subscribeToProfile(uid, (data) => {
         if (!data) return;
         setTargets({
-          calories: data.targets.calories ?? 0,
-          protein: data.targets.protein ?? 0,
-          carbs: data.targets.carbs ?? 0,
-          fats: data.targets.fats ?? 0,
+          calories: data.targets.calories ?? 2000,
+          protein: data.targets.protein ?? 150,
+          carbs: data.targets.carbs ?? 200,
+          fats: data.targets.fats ?? 60,
         });
       });
-    }, [uid])
-  );
-
-  /* ---------- LOAD MEALS ---------- */
-  useFocusEffect(
-    useCallback(() => {
-      if (!uid) return;
-      setLoading(true);
       return FirestoreService.subscribeToMealsByDate(uid, date, (data) => {
         setMeals(data);
         setLoading(false);
@@ -68,258 +49,229 @@ export default function Nutrition() {
     }, [uid, date])
   );
 
-  /* ---------- DATE CHANGE ---------- */
-  const changeDate = (dir: -1 | 1) => {
-    if (changingDate) return;
-    setChangingDate(true);
-
-    setDate((prev) => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() + dir);
-      return d;
-    });
-
-    setTimeout(() => setChangingDate(false), 200);
-  };
-
-  /* ---------- TOTALS ---------- */
   const totals = useMemo(() => {
-    return meals.reduce(
-      (a, m) => {
-        a.calories += Number(m.calories || 0);
-        a.protein += Number(m.protein || 0);
-        a.carbs += Number(m.carbs || 0);
-        a.fats += Number(m.fats || 0);
-        return a;
-      },
-      { calories: 0, protein: 0, carbs: 0, fats: 0 }
-    );
+    return meals.reduce((a, m) => {
+      a.calories += Number(m.calories || 0);
+      a.protein += Number(m.protein || 0);
+      a.carbs += Number(m.carbs || 0);
+      a.fats += Number(m.fats || 0);
+      return a;
+    }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
   }, [meals]);
 
-  /* ---------- GROUP MEALS ---------- */
   const mealsByType = useMemo(() => {
-    const map: Record<string, any[]> = {
-      Breakfast: [],
-      Lunch: [],
-      Dinner: [],
-      Snacks: [],
-    };
-
+    const map: Record<typeof MEAL_TYPES[number], any[]> = { Breakfast: [], Lunch: [], Dinner: [], Snacks: [] };
     meals.forEach((m) => {
-      const key =
-        typeof m.mealType === "string" ? m.mealType.toLowerCase() : "breakfast";
-
-      if (key.includes("breakfast")) map.Breakfast.push(m);
-      else if (key.includes("lunch")) map.Lunch.push(m);
-      else if (key.includes("dinner")) map.Dinner.push(m);
-      else map.Snacks.push(m);
+      const type = (m.mealType || "Breakfast") as typeof MEAL_TYPES[number];
+      if (map[type]) map[type].push(m);
     });
-
     return map;
   }, [meals]);
 
-  const deleteMeal = async (id: string) => {
-    if (!uid) return;
-    await FirestoreService.deleteMeal(uid, id);
-  };
+  if (loading) return <Loading label="Calibrating Macros..." />;
 
-  /* ---------- SAVE AS FAVORITE ---------- */
-  const saveAsFavorite = async (m: any) => {
-    if (!uid) return;
-    await FirestoreService.addFavoriteMeal(uid, {
-      foodName: m.foodName,
-      calories: m.calories,
-      protein: m.protein,
-      carbs: m.carbs,
-      fats: m.fats,
-      grams: m.grams,
-    });
-    alert("Saved to Favorite Meals!");
-  };
-
-  if (loading) return <Loading label="Loading nutrition..." />;
+  const remaining = Math.max(targets.calories - totals.calories, 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Nutrition
-        </Text>
-
-        <View style={[styles.dateBox, { borderColor: colors.border }]}>
-          <Pressable onPress={() => changeDate(-1)} hitSlop={12}>
-            <Text style={[styles.arrow, { color: colors.textPrimary }]}>‹</Text>
-          </Pressable>
-          <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-            {format(date, "EEEE, MMM d")}
-          </Text>
-          <Pressable onPress={() => changeDate(1)} hitSlop={12}>
-            <Text style={[styles.arrow, { color: colors.textPrimary }]}>›</Text>
-          </Pressable>
+      {/* --- TOP APP BAR --- */}
+      <View style={styles.header}>
+        <View style={styles.dateSelector}>
+           <Pressable onPress={() => setDate(new Date(date.setDate(date.getDate() - 1)))}>
+              <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+           </Pressable>
+           <Text style={[styles.headerDate, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{format(date, "EEEE, MMM d")}</Text>
+           <Pressable onPress={() => setDate(new Date(date.setDate(date.getDate() + 1)))}>
+              <Ionicons name="chevron-forward" size={20} color={colors.textPrimary} />
+           </Pressable>
         </View>
+        <Pressable onPress={() => router.push("../profile")} style={styles.avatarBtn}>
+           <Image 
+             source={{ uri: user?.photoURL || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAn-pM9QW7qD0p9y8-zG3X7_M-L-C-K-U-z-I-R-Y-B-K-Q-P-G-A-O-I-L-U-S-T-R-A-T-I-O-N' }} 
+             style={styles.avatar} 
+           />
+        </Pressable>
+      </View>
 
-        {/* MACROS */}
-        <View style={styles.macroGrid}>
-          <Macro
-            title="Calories"
-            value={totals.calories}
-            goal={targets.calories}
-          />
-          <Macro title="Protein" value={totals.protein} goal={targets.protein} />
-          <Macro title="Carbs" value={totals.carbs} goal={targets.carbs} />
-          <Macro title="Fats" value={totals.fats} goal={targets.fats} />
-        </View>
-
-        {/* MEALS */}
-        <View style={{ marginTop: 20 }}>
-          {MEAL_TYPES.map((type) => (
-            <View key={type} style={{ marginBottom: 16 }}>
-              <View style={styles.sectionHeader}>
-                <Text
-                  style={[styles.sectionTitle, { color: colors.textPrimary }]}
-                >
-                  {type}
-                </Text>
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: "/add-meal",
-                      params: {
-                        mealType: type,
-                        date: startOfDay(date).toISOString(),
-                      },
-                    })
-                  }
-                >
-                  <Text style={[styles.add, { color: colors.accent }]}>＋</Text>
-                </Pressable>
-              </View>
-
-              {mealsByType[type].map((m) => (
-                <Card
-                  key={m.id}
-                  style={{ marginBottom: 8, backgroundColor: colors.card }}
-                >
-                  <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{ fontWeight: "600", color: colors.textPrimary }}
-                      >
-                        {m.foodName}
-                      </Text>
-
-                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                        {m.grams} g • {m.calories} kcal
-                      </Text>
-
-                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                        P {m.protein}g | C {m.carbs}g | F {m.fats}g
-                      </Text>
-                    </View>
-
-                    <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-                      <Pressable onPress={() => saveAsFavorite(m)}>
-                        <Ionicons name="star-outline" size={18} color={colors.warning} />
-                      </Pressable>
-                      <Pressable onPress={() => deleteMeal(m.id)}>
-                        <Text style={[styles.delete, { color: colors.danger }]}>
-                          🗑️
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </Card>
-              ))}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+         {/* --- SEARCH --- */}
+         <View style={styles.searchSection}>
+            <View style={[styles.searchBar, { backgroundColor: colors.surfaceContainerLow }]}>
+               <Ionicons name="search" size={20} color={colors.textSecondary} />
+               <TextInput 
+                 placeholder="Search foods, brands..." 
+                 placeholderTextColor={colors.onSurfaceVariant}
+                 style={[styles.searchInput, { color: colors.textPrimary, fontFamily: 'Manrope-Medium' }]}
+               />
+               <Pressable style={styles.scanBtn}>
+                  <Ionicons name="barcode-outline" size={20} color={colors.primary} />
+               </Pressable>
             </View>
-          ))}
-        </View>
+         </View>
+
+         {/* --- SUMMARY CARD --- */}
+         <View style={styles.summarySection}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.surfaceContainerLow }]}>
+               <View style={styles.summaryTop}>
+                  <View>
+                     <Text style={[styles.summaryLabel, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>CALORIES REMAINING</Text>
+                     <Text style={[styles.summaryVal, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{remaining}</Text>
+                  </View>
+                  <View style={styles.summaryRing}>
+                     <LinearGradient colors={gradients.primary} style={styles.ringInner} start={{x:0, y:0}} end={{x:1, y:1}}>
+                        <Text style={[styles.ringText, { fontFamily: 'SpaceGrotesk-Bold' }]}>{Math.round((totals.calories/targets.calories)*100)}%</Text>
+                     </LinearGradient>
+                  </View>
+               </View>
+
+               <View style={styles.macroGrid}>
+                  <MacroItem label="Protein" current={totals.protein} target={targets.protein} color={colors.success} />
+                  <MacroItem label="Carbs" current={totals.carbs} target={targets.carbs} color={colors.primary} />
+                  <MacroItem label="Fats" current={totals.fats} target={targets.fats} color={colors.secondary} />
+               </View>
+            </View>
+         </View>
+
+         {/* --- RAPID LOG --- */}
+         <View style={styles.rapidSection}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>Rapid Log</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rapidScroll}>
+               <RapidCard icon="cafe" label="Black Coffee" cals="5" color="#795548" />
+               <RapidCard icon="egg" label="Boiled Egg" cals="78" color="#FFD54F" />
+               <RapidCard icon="fitness" label="Whey Shake" cals="120" color={colors.primary} />
+               <RapidCard icon="water" label="1L Water" cals="0" color="#4FC3F7" />
+            </ScrollView>
+         </View>
+
+         {/* --- MEAL LOGS --- */}
+         <View style={styles.logsSection}>
+            {MEAL_TYPES.map((type, index) => (
+               <MealGroup 
+                 key={type} 
+                 title={type} 
+                 meals={mealsByType[type]} 
+                 colors={colors} 
+                 index={index}
+                 onAdd={() => router.push({ pathname: "/add-meal", params: { mealType: type, date: date.toISOString() } })}
+               />
+            ))}
+         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/* ================= SUB ================= */
-
-function Macro({
-  title,
-  value,
-  goal,
-}: {
-  title: string;
-  value: number;
-  goal: number;
-}) {
+function MacroItem({ label, current, target, color }: any) {
   const { colors } = useTheme();
-
-  const pct = goal ? Math.min((value / goal) * 100, 100) : 0;
-
+  const progress = Math.min(current / target, 1);
   return (
-    <Card style={styles.macroCard}>
-      <Text style={[styles.macroTitle, { color: colors.textSecondary }]}>
-        {title}
-      </Text>
-      <Text style={[styles.macroValue, { color: colors.textPrimary }]}>
-        {value}/{goal}
-      </Text>
-      <View style={[styles.barBg, { backgroundColor: colors.border }]}>
-        <View
-          style={[
-            styles.barFill,
-            { width: `${pct}%`, backgroundColor: colors.accent },
-          ]}
-        />
-      </View>
-    </Card>
+    <View style={styles.macroItem}>
+       <View style={styles.macroHeader}>
+          <Text style={[styles.macroLabel, { color: colors.textSecondary, fontFamily: 'Manrope-Bold' }]}>{label.toUpperCase()}</Text>
+          <Text style={[styles.macroVal, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{current}g</Text>
+       </View>
+       <View style={[styles.macroTrack, { backgroundColor: colors.surfaceContainerHighest }]}>
+          <View style={[styles.macroFill, { backgroundColor: color, width: `${progress * 100}%` }]} />
+       </View>
+    </View>
   );
 }
 
-/* ================= STYLES ================= */
+function RapidCard({ icon, label, cals, color }: any) {
+  const { colors: themeColors } = useTheme();
+  return (
+    <Pressable style={[styles.rapidCard, { backgroundColor: themeColors.surfaceContainerLow }]}>
+       <View style={[styles.rapidIcon, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={icon as any} size={22} color={color} />
+       </View>
+       <Text style={[styles.rapidLabel, { color: themeColors.textPrimary, fontFamily: 'Manrope-Bold' }]}>{label}</Text>
+       <Text style={[styles.rapidCals, { color: themeColors.onSurfaceVariant, fontFamily: 'SpaceGrotesk-Medium' }]}>{cals} kcal</Text>
+    </Pressable>
+  );
+}
+
+function MealGroup({ title, meals, colors, index, onAdd }: any) {
+  return (
+    <Animated.View entering={FadeInUp.delay(300 + index * 100)} style={styles.mealGroup}>
+       <View style={styles.groupHeader}>
+          <Text style={[styles.groupTitle, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{title}</Text>
+          <Pressable onPress={onAdd}>
+             <Ionicons name="add-circle" size={24} color={colors.primary} />
+          </Pressable>
+       </View>
+       {meals.length === 0 ? (
+          <View style={[styles.emptyMeal, { backgroundColor: colors.surfaceContainerLow }]}>
+             <Text style={[styles.emptyText, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Medium' }]}>Nothing logged for {title}</Text>
+          </View>
+       ) : (
+          meals.map((meal: any) => (
+             <View key={meal.id} style={[styles.mealItem, { backgroundColor: colors.surfaceContainerLowest }]}>
+                <View>
+                   <Text style={[styles.mealName, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{meal.foodName}</Text>
+                   <Text style={[styles.mealGrams, { color: colors.textSecondary, fontFamily: 'Manrope-Medium' }]}>{meal.grams}g • P: {meal.protein}g C: {meal.carbs}g F: {meal.fats}g</Text>
+                </View>
+                <Text style={[styles.mealCals, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{meal.calories}</Text>
+             </View>
+          ))
+       )}
+    </Animated.View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 22, fontWeight: "700", textAlign: "center" },
-
-  dateBox: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-    borderWidth: 1,
-    borderRadius: 12,
-    marginVertical: 16,
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    paddingVertical: 16 
   },
-  arrow: { fontSize: 28, fontWeight: "600" },
-  dateText: { fontWeight: "600" },
-
-  macroGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 12,
+  dateSelector: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerDate: { fontSize: 18, letterSpacing: -0.5 },
+  avatarBtn: { width: 32, height: 32, borderRadius: 16, overflow: 'hidden' },
+  avatar: { width: '100%', height: '100%' },
+  scroll: { paddingBottom: 100 },
+  searchSection: { paddingHorizontal: 24, marginVertical: 16 },
+  searchBar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 16, 
+    height: 56, 
+    borderRadius: 28,
+    gap: 12,
   },
-  macroCard: { width: "48%" },
-  macroTitle: { fontSize: 12 },
-  macroValue: { fontWeight: "700", marginBottom: 6 },
-
-  barBg: {
-    height: 6,
-    borderRadius: 4,
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  sectionTitle: { fontWeight: "700" },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  delete: {},
-  add: { fontSize: 18 },
+  searchInput: { flex: 1, fontSize: 15 },
+  scanBtn: { padding: 4 },
+  summarySection: { paddingHorizontal: 24, marginBottom: 32 },
+  summaryCard: { borderRadius: 32, padding: 24 },
+  summaryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
+  summaryLabel: { fontSize: 10, letterSpacing: 1.5, marginBottom: 4 },
+  summaryVal: { fontSize: 48, letterSpacing: -2 },
+  summaryRing: { width: 72, height: 72, borderRadius: 36, padding: 4, backgroundColor: 'rgba(0,0,0,0.05)' },
+  ringInner: { flex: 1, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  ringText: { color: '#fff', fontSize: 14 },
+  macroGrid: { flexDirection: 'row', gap: 12 },
+  macroItem: { flex: 1 },
+  macroHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
+  macroLabel: { fontSize: 9, letterSpacing: 0.5 },
+  macroVal: { fontSize: 14 },
+  macroTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  macroFill: { height: '100%', borderRadius: 2 },
+  rapidSection: { marginBottom: 40 },
+  sectionTitle: { fontSize: 20, marginLeft: 24, marginBottom: 16 },
+  rapidScroll: { paddingHorizontal: 24, gap: 12 },
+  rapidCard: { width: 120, padding: 16, borderRadius: 24, alignItems: 'center' },
+  rapidIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  rapidLabel: { fontSize: 12, textAlign: 'center' },
+  rapidCals: { fontSize: 11, marginTop: 4, opacity: 0.6 },
+  logsSection: { paddingHorizontal: 24, gap: 32 },
+  mealGroup: { gap: 12 },
+  groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  groupTitle: { fontSize: 22, letterSpacing: -0.5 },
+  emptyMeal: { padding: 16, borderRadius: 20, borderStyle: 'dashed', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
+  emptyText: { fontSize: 13, opacity: 0.5 },
+  mealItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderRadius: 20 },
+  mealName: { fontSize: 16, letterSpacing: -0.3 },
+  mealGrams: { fontSize: 12, marginTop: 2 },
+  mealCals: { fontSize: 18, letterSpacing: -0.5 },
 });

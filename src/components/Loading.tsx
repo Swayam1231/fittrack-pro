@@ -1,5 +1,6 @@
+import React, { useEffect } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
-import Animated, { useAnimatedStyle, withRepeat, withTiming, withSequence, useSharedValue, useEffect } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, withRepeat, withTiming, withSequence, useSharedValue } from "react-native-reanimated";
 import { useTheme } from "../context/ThemeContext";
 
 export function Loading({ label = "Loading..." }: { label?: string }) {

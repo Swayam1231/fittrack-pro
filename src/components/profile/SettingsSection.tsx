@@ -1,11 +1,10 @@
-import { View, Text, Pressable, Alert } from "react-native";
+import { View, Text, Pressable, Alert, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { signOut } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { auth } from "../../firebase/firebase";
 import { useTheme } from "../../context/ThemeContext";
 
-/* ---------- ROW COMPONENT ---------- */
 type RowProps = {
   icon: any;
   label: string;
@@ -15,92 +14,62 @@ type RowProps = {
 };
 
 function Row({ icon, label, value, danger, onPress }: RowProps) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
 
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 12,
-      }}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: colors.surfaceContainerLowest },
+        pressed && { transform: [{ scale: 0.98 }] }
+      ]}
     >
-      <Ionicons
-        name={icon}
-        size={18}
-        color={danger ? colors.danger : colors.textSecondary}
-        style={{ width: 28 }}
-      />
-
-      <Text
-        style={{
-          flex: 1,
-          fontWeight: "500",
-          color: danger ? colors.danger : colors.textPrimary,
-        }}
-      >
-        {label}
-      </Text>
-
-      {value && (
+      <View style={styles.rowLeft}>
+        <View style={[styles.iconBox, { backgroundColor: colors.surfaceContainerLow }]}>
+           <Ionicons
+             name={icon}
+             size={18}
+             color={danger ? colors.danger : colors.primary}
+           />
+        </View>
         <Text
-          style={{
-            color: colors.textSecondary,
-            marginRight: 6,
-          }}
+          style={[
+            styles.label,
+            { color: danger ? colors.danger : colors.textPrimary, fontFamily: 'Manrope-Bold' }
+          ]}
         >
-          {value}
+          {label}
         </Text>
-      )}
+      </View>
 
-      {!danger && (
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={colors.border}
-        />
-      )}
+      <View style={styles.rowRight}>
+        {value && <Text style={[styles.value, { color: colors.textSecondary, fontFamily: 'SpaceGrotesk-Bold' }]}>{value}</Text>}
+        <Ionicons name="chevron-forward" size={14} color={colors.onSurfaceVariant} />
+      </View>
     </Pressable>
   );
 }
 
-/* ---------- MAIN SETTINGS ---------- */
 export default function SettingsSection() {
-  const { mode, setMode, colors } = useTheme();
+  const { mode, setMode } = useTheme();
   const router = useRouter();
 
-  /* ---- THEME CYCLER ---- */
-  const nextTheme =
-    mode === "system" ? "light" : mode === "light" ? "dark" : "system";
+  const nextTheme = mode === "system" ? "light" : mode === "light" ? "dark" : "system";
+  const themeLabel = mode === "system" ? "OS AUTO" : mode === "light" ? "LIGHT" : "DARK";
 
-  const themeLabel =
-    mode === "system" ? "System" : mode === "light" ? "Light" : "Dark";
-
-  /* ---- EXPORT PLACEHOLDER ---- */
-  const handleExport = () => {
-    Alert.alert(
-      "Export Data",
-      "Export as CSV or PDF will be available soon."
-    );
-  };
-
-  /* ---- LOGOUT (FIXED) ---- */
   const handleLogout = () => {
-    Alert.alert("Log out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("DISCONNECT", "Terminate current session?", [
+      { text: "ABORT", style: "cancel" },
       {
-        text: "Log out",
+        text: "DISCONNECT",
         style: "destructive",
         onPress: async () => {
           try {
             await signOut(auth);
-
-            // 🔥 HARD RESET NAVIGATION
             router.replace("/(auth)/login");
           } catch (error) {
             console.error("Logout failed:", error);
-            Alert.alert("Error", "Failed to log out. Try again.");
           }
         },
       },
@@ -108,44 +77,39 @@ export default function SettingsSection() {
   };
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 32,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 16,
-          fontWeight: "700",
-          marginBottom: 8,
-          color: colors.textPrimary,
-        }}
-      >
-        Settings
-      </Text>
-
+    <View style={styles.container}>
       <Row
         icon="color-palette-outline"
-        label="Theme"
+        label="Environment Engine"
         value={themeLabel}
         onPress={() => setMode(nextTheme)}
       />
 
       <Row
-        icon="download-outline"
-        label="Export Data"
-        onPress={handleExport}
+        icon="cloud-download-outline"
+        label="Dossier Export"
+        onPress={() => Alert.alert("Export", "Compiling history...")}
       />
+
+      <View style={styles.spacer} />
 
       <Row
         icon="log-out-outline"
-        label="Logout"
+        label="Disconnect Identity"
         danger
         onPress={handleLogout}
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: 'space-between', padding: 16, borderRadius: 20 },
+  rowLeft: { flexDirection: "row", alignItems: "center" },
+  iconBox: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  label: { fontSize: 15 },
+  rowRight: { flexDirection: "row", alignItems: "center" },
+  value: { fontSize: 11, marginRight: 8, letterSpacing: 1 },
+  spacer: { height: 12 },
+});

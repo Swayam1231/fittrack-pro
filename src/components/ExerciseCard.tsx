@@ -1,9 +1,10 @@
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Card } from "./Card";
-import { useTheme } from "../context/ThemeContext"; // ✅ added
+import { useTheme } from "../context/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 
-type SetEntry = { reps: string; weight: string };
-type Exercise = { name: string; sets: SetEntry[] };
+type SetEntry = { reps: string; weight: string; completed?: boolean };
+type Exercise = { name: string; sets: SetEntry[]; target?: string };
 
 export function ExerciseCard({
   exercise,
@@ -12,6 +13,7 @@ export function ExerciseCard({
   onDeleteSet,
   onDeleteExercise,
   onUpdateSet,
+  onToggleComplete,
 }: {
   exercise: Exercise;
   index: number;
@@ -23,136 +25,179 @@ export function ExerciseCard({
     field: "reps" | "weight",
     value: string
   ) => void;
+  onToggleComplete?: (setIndex: number) => void;
 }) {
-  const { colors } = useTheme(); // ✅ added
+  const { colors, theme } = useTheme();
 
   return (
-    <Card style={{ marginTop: 12 }}>
+    <View style={[styles.container, { backgroundColor: colors.surfaceContainerLow }]}>
+      {/* --- EXERCISE TOP HEADER --- */}
       <View style={styles.exerciseHeader}>
-        <Text
-          style={[
-            styles.exerciseTitle,
-            { color: colors.textPrimary }, // ✅
-          ]}
-        >
-          {exercise.name || "Select exercise"}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.exerciseTitle, { color: colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>
+            {exercise.name || "Select movement"}
+          </Text>
+          <Text style={[styles.targetInfo, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>
+            {exercise.target || "TARGET: 3 SETS • 10-12 REPS"}
+          </Text>
+        </View>
 
-        {/* ✅ IMPROVED DELETE BUTTON */}
         <Pressable
           onPress={onDeleteExercise}
-          style={[
-            styles.deleteButton,
-            {
-              backgroundColor: colors.danger + "22", // subtle red background
-            },
-          ]}
+          style={[styles.moreBtn, { backgroundColor: colors.surfaceContainerHighest }]}
         >
-          <Text
-            style={{
-              color: colors.danger,
-              fontSize: 14,
-              fontWeight: "700",
-            }}
-          >
-            🗑
-          </Text>
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />
         </Pressable>
       </View>
 
-      {exercise.sets.map((set, sIdx) => (
-        <View key={sIdx} style={styles.setRow}>
-          <TextInput
-            placeholder="Reps"
-            keyboardType="numeric"
-            value={set.reps}
-            onChangeText={(v) => onUpdateSet(sIdx, "reps", v)}
-            style={[
-              styles.setInput,
-              {
-                backgroundColor: colors.background, // ✅
-                color: colors.textPrimary, // ✅
-              },
-            ]}
-            placeholderTextColor={colors.textSecondary} // ✅
-          />
+      {/* --- COLUMN HEADERS --- */}
+      <View style={styles.columnHeaders}>
+        <Text style={[styles.colLabel, { color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>SET</Text>
+        <Text style={[styles.colLabel, { flex: 1.2, textAlign: 'center', color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>KG</Text>
+        <Text style={[styles.colLabel, { flex: 1, textAlign: 'center', color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>REPS</Text>
+        <Text style={[styles.colLabel, { width: 44, textAlign: 'right', color: colors.onSurfaceVariant, fontFamily: 'Manrope-Bold' }]}>DONE</Text>
+      </View>
 
-          <TextInput
-            placeholder="Weight"
-            keyboardType="numeric"
-            value={set.weight}
-            onChangeText={(v) => onUpdateSet(sIdx, "weight", v)}
+      {/* --- SET ROWS --- */}
+      {exercise.sets.map((set, sIdx) => {
+        const isCompleted = set.completed;
+        return (
+          <View 
+            key={sIdx} 
             style={[
-              styles.setInput,
-              {
-                backgroundColor: colors.background, // ✅
-                color: colors.textPrimary, // ✅
-              },
+              styles.setRow, 
+              { 
+                backgroundColor: isCompleted ? (theme === 'light' ? '#E8F5E9' : 'rgba(76, 175, 80, 0.1)') : colors.surfaceContainerLowest,
+              }
             ]}
-            placeholderTextColor={colors.textSecondary} // ✅
-          />
+          >
+            {/* Set Number */}
+            <View style={[styles.setNumBox, { borderLeftColor: isCompleted ? '#4CAF50' : colors.primary }]}>
+               <Text style={[styles.setNum, { color: isCompleted ? '#4CAF50' : colors.textPrimary, fontFamily: 'SpaceGrotesk-Bold' }]}>{sIdx + 1}</Text>
+            </View>
 
-          <Pressable onPress={() => onDeleteSet(sIdx)}>
-            <Text
+            {/* Weight Input */}
+            <TextInput
+              placeholder="0"
+              keyboardType="numeric"
+              value={set.weight}
+              onChangeText={(v) => onUpdateSet(sIdx, "weight", v)}
+              style={[styles.setInput, { color: colors.textPrimary, backgroundColor: colors.surfaceContainerLow, fontFamily: 'SpaceGrotesk-Medium' }]}
+              placeholderTextColor={colors.onSurfaceVariant}
+            />
+
+            {/* Reps Input */}
+            <TextInput
+              placeholder="0"
+              keyboardType="numeric"
+              value={set.reps}
+              onChangeText={(v) => onUpdateSet(sIdx, "reps", v)}
+              style={[styles.setInput, { color: colors.textPrimary, backgroundColor: colors.surfaceContainerLow, fontFamily: 'SpaceGrotesk-Medium' }]}
+              placeholderTextColor={colors.onSurfaceVariant}
+            />
+
+            {/* Completed Toggle */}
+            <Pressable 
+              onPress={() => onToggleComplete?.(sIdx)}
               style={[
-                styles.deleteSet,
-                { color: colors.danger }, // ✅
+                styles.doneCircle, 
+                { backgroundColor: isCompleted ? '#4CAF50' : colors.surfaceContainerLow }
               ]}
             >
-              ✕
-            </Text>
-          </Pressable>
-        </View>
-      ))}
+              {isCompleted && <Ionicons name="checkmark" size={16} color="#fff" />}
+            </Pressable>
+          </View>
+        );
+      })}
 
-      <Pressable onPress={onAddSet}>
-        <Text
-          style={{
-            color: colors.accent, // ✅
-            marginTop: 6,
-          }}
-        >
-          + Add Set
+      <Pressable onPress={onAddSet} style={styles.addSetBtn}>
+        <Text style={[styles.addSetText, { color: colors.primary, fontFamily: 'Manrope-Bold' }]}>
+          + ADD SET
         </Text>
       </Pressable>
-    </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    padding: 24,
+    borderRadius: 32,
+    marginTop: 16,
+  },
   exerciseHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    alignItems: "flex-start",
+    marginBottom: 24,
   },
   exerciseTitle: {
-    fontWeight: "600",
-    fontSize: 15,
+    fontSize: 22,
+    letterSpacing: -0.5,
   },
-
-  /* ✅ NEW STYLE FOR DELETE BUTTON */
-  deleteButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  targetInfo: {
+    fontSize: 10,
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+  moreBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-
+  columnHeaders: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  colLabel: {
+    fontSize: 9,
+    letterSpacing: 1,
+    width: 32,
+  },
   setRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
+    paddingVertical: 10,
+    paddingRight: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  setNumBox: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderLeftWidth: 3,
+    height: 30,
+  },
+  setNum: {
+    fontSize: 18,
   },
   setInput: {
     flex: 1,
-    padding: 10,
-    borderRadius: 8,
-  },
-  deleteSet: {
+    height: 48,
     fontSize: 18,
-    paddingHorizontal: 6,
+    textAlign: 'center',
+    marginHorizontal: 4,
+    borderRadius: 12,
+  },
+  doneCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  addSetBtn: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+  addSetText: {
+    fontSize: 13,
+    letterSpacing: 1,
   },
 });

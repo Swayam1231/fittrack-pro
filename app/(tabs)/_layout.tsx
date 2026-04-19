@@ -14,15 +14,23 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.accent, 
-          tabBarInactiveTintColor: colors.textSecondary,  
+          tabBarActiveTintColor: colors.primary, 
+          tabBarInactiveTintColor: colors.onSurfaceVariant,  
           tabBarStyle: {
-            height: 60,
-            paddingTop: 6,
-            paddingBottom: 6,
-            backgroundColor: colors.card,
-            borderTopColor: colors.border, 
+            height: 70,
+            paddingBottom: 10,
+            backgroundColor: colors.surfaceContainerLowest,
+            borderTopWidth: 0,
+            elevation: 10,
+            shadowColor: "#000",
+            shadowOpacity: 0.05,
+            shadowRadius: 10,
           },
+          tabBarLabelStyle: {
+            fontFamily: 'Manrope-Bold',
+            fontSize: 10,
+            letterSpacing: 0.5,
+          }
         }}
       >
         <Tabs.Screen

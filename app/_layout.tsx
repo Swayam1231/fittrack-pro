@@ -2,8 +2,8 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ThemeProvider } from "../src/context/ThemeContext";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
+import { ThemeProvider } from "../src/context/ThemeContext";
 
 function RootLayoutContent() {
   const router = useRouter();
@@ -49,6 +49,8 @@ function RootLayoutContent() {
       <Stack.Screen name="workout/[id]" />
       <Stack.Screen name="edit-workout/[id]" />
       <Stack.Screen name="exercise-presets" />
+      <Stack.Screen name="scanner" />
+      <Stack.Screen name="share-workout" />
     </Stack>
   );
 }
