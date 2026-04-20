@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Svg, { 
   Path, 
   Circle, 
@@ -13,7 +13,8 @@ import Svg, {
   Filter,
   FeGaussianBlur,
   FeMerge,
-  FeMergeNode
+  FeMergeNode,
+  Rect
 } from 'react-native-svg';
 import Animated, { 
   useAnimatedProps, 
@@ -23,7 +24,7 @@ import Animated, {
   interpolate,
   withSequence,
   useAnimatedStyle,
-  interpolateColor
+  withDelay
 } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 import { Workout } from '../services/firestore.service';
@@ -32,6 +33,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedG = Animated.createAnimatedComponent(G);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface MuscleHeatmapProps {
   workouts: Workout[];
@@ -68,17 +70,18 @@ const BACK_PATHS = {
 };
 
 export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({ workouts }) => {
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const [view, setView] = useState<'front' | 'back'>('front');
   const scanPos = useSharedValue(0);
   const breath = useSharedValue(1);
+  const nodeOpacity = useSharedValue(0);
 
   useEffect(() => {
-    scanPos.value = withRepeat(withTiming(1, { duration: 3000 }), -1, true);
-    breath.value = withRepeat(withSequence(withTiming(1.15, { duration: 2000 }), withTiming(1, { duration: 2000 })), -1, true);
+    scanPos.value = withRepeat(withTiming(1, { duration: 4000 }), -1, true);
+    breath.value = withRepeat(withSequence(withTiming(1.15, { duration: 2500 }), withTiming(1, { duration: 2500 })), -1, true);
+    nodeOpacity.value = withRepeat(withSequence(withTiming(1, { duration: 1000 }), withTiming(0.3, { duration: 1000 })), -1, true);
   }, []);
 
-  // Calculate muscle intensity with expanded groups
   const muscleIntensity: Record<string, number> = {
     Chest: 0, Back: 0, Core: 0, Shoulders: 0, Biceps: 0, Triceps: 0, Forearms: 0, Quads: 0, Hamstrings: 0, Glutes: 0,
   };
@@ -93,10 +96,10 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({ workouts }) => {
       const part = exerciseToBodyPart[ex.name];
       if (part) {
         if (part === "Chest") muscleIntensity.Chest += 0.15;
-        else if (part === "Back") muscleIntensity.Back += 0.15;
+        else if (part === "Back" || part === "Upper Back" || part === "Lower Back") muscleIntensity.Back += 0.15;
         else if (part === "Abs" || part === "Core") muscleIntensity.Core += 0.2;
         else if (part.includes("Shoulders")) muscleIntensity.Shoulders += 0.15;
-        else if (part === "Biceps") muscleIntensity.Biceps += 0.15;
+        else if (["Biceps", "Arms"].includes(part)) muscleIntensity.Biceps += 0.15;
         else if (part === "Triceps") muscleIntensity.Triceps += 0.15;
         else if (part === "Forearms") muscleIntensity.Forearms += 0.1;
         else if (part === "Quads") muscleIntensity.Quads += 0.15;
@@ -117,73 +120,87 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({ workouts }) => {
 
   const getIntensityColor = (score: number) => {
     if (score === 0) return 'rgba(255, 255, 255, 0.03)';
-    if (score > 0.7) return '#FF0055'; // Max Strain
-    if (score > 0.3) return '#7000FF'; // Active
-    return '#00F2FF'; // Recovery/Starting
+    if (score > 0.75) return '#FF0055'; // Critical Strain (Coral Red)
+    if (score > 0.4) return '#7000FF'; // Optimized Output (Royal Purple)
+    return '#00F2FF'; // Biological Recovery (Neon Cyan)
   };
 
   const animatedScanStyle = useAnimatedStyle(() => ({
-    top: interpolate(scanPos.value, [0, 1], [0, 200]),
-    opacity: interpolate(scanPos.value, [0, 0.1, 0.9, 1], [0, 0.8, 0.8, 0]),
+    top: interpolate(scanPos.value, [0, 1], [0, 240]),
+    opacity: interpolate(scanPos.value, [0, 0.1, 0.9, 1], [0, 1, 1, 0]),
   }));
+
+  const topStrains = Object.entries(muscleIntensity)
+    .filter(([_, v]) => v > 0.1)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
 
   return (
     <View style={styles.container}>
+      {/* Corner Accents */}
+      <View style={styles.cornerTL} />
+      <View style={styles.cornerBR} />
+
       <View style={styles.header}>
         <View>
-          <View style={styles.telemetryBadge}>
-             <View style={[styles.pulseDot, { backgroundColor: '#FF0055' }]} />
-             <Text style={styles.telemetryText}>NEURAL SCAN ACTIVE</Text>
+          <View style={styles.statusRow}>
+              <View style={[styles.pulseDot, { backgroundColor: '#FF0055' }]} />
+              <Text style={styles.statusText}>BIOMETRIC OVERLAY v2.4.1</Text>
           </View>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-             {view === 'front' ? 'Anterior' : 'Posterior'} View
+             {view === 'front' ? 'Anterior Kinematics' : 'Posterior Kinematics'}
           </Text>
         </View>
         <Pressable 
           onPress={() => setView(v => v === 'front' ? 'back' : 'front')}
-          style={[styles.toggleBtn, { backgroundColor: colors.surfaceContainerHigh }]}
+          style={styles.flipCircle}
         >
-          <Ionicons name="refresh" size={18} color={colors.primary} />
-          <Text style={[styles.toggleText, { color: colors.textPrimary }]}>FLIP</Text>
+          <Ionicons name="swap-horizontal" size={20} color="#00F2FF" />
         </Pressable>
       </View>
 
       <View style={styles.heatmapWrapper}>
-        <Svg width="240" height="260" viewBox="0 0 100 200">
+        <Svg width="260" height="280" viewBox="0 0 100 200">
           <Defs>
-            <Filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
-               <FeGaussianBlur stdDeviation="1.5" result="blur" />
+            <Filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+               <FeGaussianBlur stdDeviation="2.5" result="blur" />
                <FeMerge>
                  <FeMergeNode in="blur" />
                  <FeMergeNode in="SourceGraphic" />
                </FeMerge>
             </Filter>
             
-            <RadialGradient id="gradStrain" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0%" stopColor="#FF0055" stopOpacity="0.6" />
-              <Stop offset="100%" stopColor="#FF0055" stopOpacity="0" />
-            </RadialGradient>
-            <RadialGradient id="gradActive" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0%" stopColor="#7000FF" stopOpacity="0.5" />
-              <Stop offset="100%" stopColor="#7000FF" stopOpacity="0" />
-            </RadialGradient>
-            
-            <LinearGradient id="scanGrad" x1="0" y1="0" x2="0" y2="1">
+            <LinearGradient id="scanBeam" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0%" stopColor="#00F2FF" stopOpacity="0" />
-              <Stop offset="50%" stopColor="#00F2FF" stopOpacity="1" />
+              <Stop offset="50%" stopColor="#00F2FF" stopOpacity="0.8" />
               <Stop offset="100%" stopColor="#00F2FF" stopOpacity="0" />
             </LinearGradient>
+
+            <RadialGradient id="nodeGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+               <Stop offset="0%" stopColor="#00F2FF" stopOpacity="0.4" />
+               <Stop offset="100%" stopColor="#00F2FF" stopOpacity="0" />
+            </RadialGradient>
           </Defs>
 
-          {/* Wireframe Silhouette */}
-          <G opacity={0.15} stroke={colors.primary} strokeWidth="0.5" fill="none">
-             <Path d="M50 15c-5 0-10 4-10 10s5 10 10 10 10-4 10-10-5-10-10-10z" /> {/* Head */}
-             <Path d="M40 35c-10 2-15 10-15 25v40c0 10 5 15 10 18l5 50h20l5-50c5-3 10-8 10-18V60c0-15-5-23-15-25z" /> {/* Torso */}
-             <Path d="M25 45c-5 3-10 10-10 25v30M75 45c5 3 10 10 10 25v30" /> {/* Arms */}
+          {/* Blueprint Grid */}
+          <G opacity={0.05} stroke={colors.primary} strokeWidth="0.2">
+             {Array.from({length: 11}).map((_, i) => (
+                <Line key={`h-${i}`} x1="0" y1={i * 20} x2="100" y2={i * 20} />
+             ))}
+             {Array.from({length: 6}).map((_, i) => (
+                <Line key={`v-${i}`} x1={i * 20} y1="0" x2={i * 20} y2="200" />
+             ))}
+          </G>
+
+          {/* Skeleton Framework */}
+          <G opacity={0.2} stroke="#fff" strokeWidth="0.5" fill="none">
+             <Path d="M50 20v80M30 40h40M35 100h30l2 80M35 180" opacity={0.3} />
+             <Circle cx="50" cy="23" r="10" />
+             <Rect x="35" y="40" width="30" height="60" rx="5" />
           </G>
 
           {view === 'front' ? (
-            <G>
+            <G filter="url(#softGlow)">
               <MuscleGroup path={FRONT_PATHS.Chest_L} intensity={muscleIntensity.Chest} color={getIntensityColor(muscleIntensity.Chest)} breath={breath} />
               <MuscleGroup path={FRONT_PATHS.Chest_R} intensity={muscleIntensity.Chest} color={getIntensityColor(muscleIntensity.Chest)} breath={breath} />
               <MuscleGroup path={FRONT_PATHS.Abs_Upper} intensity={muscleIntensity.Core} color={getIntensityColor(muscleIntensity.Core)} breath={breath} />
@@ -198,7 +215,7 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({ workouts }) => {
               <MuscleGroup path={FRONT_PATHS.Quads_R} intensity={muscleIntensity.Quads} color={getIntensityColor(muscleIntensity.Quads)} breath={breath} />
             </G>
           ) : (
-            <G>
+            <G filter="url(#softGlow)">
               <MuscleGroup path={BACK_PATHS.Traps} intensity={muscleIntensity.Back} color={getIntensityColor(muscleIntensity.Back * 0.5)} breath={breath} />
               <MuscleGroup path={BACK_PATHS.Lats_L} intensity={muscleIntensity.Back} color={getIntensityColor(muscleIntensity.Back)} breath={breath} />
               <MuscleGroup path={BACK_PATHS.Lats_R} intensity={muscleIntensity.Back} color={getIntensityColor(muscleIntensity.Back)} breath={breath} />
@@ -211,39 +228,63 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({ workouts }) => {
             </G>
           )}
 
-          {/* Dynamic Labels for Top Strain */}
-          {Object.entries(muscleIntensity)
-            .filter(([_, v]) => v > 0.4)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 2)
-            .map(([name, val], idx) => (
-              <G key={name} transform={`translate(0, ${idx * 15})`}>
-                <Line x1="10" y1="40" x2="30" y2="60" stroke={getIntensityColor(val)} strokeWidth="0.5" opacity={0.5} />
-                <SvgText 
-                  x="5" y="35" 
-                  fill={getIntensityColor(val)} 
-                  fontSize="6" 
-                  fontFamily="SpaceGrotesk-Bold"
-                >
-                  {`${name.toUpperCase()} DATA: ${(val * 100).toFixed(0)}%`}
-                </SvgText>
-              </G>
-            ))}
+          {/* Data Callouts */}
+          {topStrains.map(([name, val], idx) => {
+             const yPos = 40 + idx * 25;
+             return (
+               <G key={name}>
+                  <Line x1="10" y1={yPos} x2="35" y2={yPos} stroke={getIntensityColor(val)} strokeWidth="0.5" strokeDasharray="2,1" />
+                  <Circle cx="10" cy={yPos} r="1.5" fill={getIntensityColor(val)} />
+                  <SvgText 
+                    x="5" y={yPos - 4} 
+                    fill={getIntensityColor(val)} 
+                    fontSize="5" 
+                    fontWeight="900" 
+                    fontFamily="SpaceGrotesk-Bold"
+                  >
+                    {`${name.toUpperCase()} DATA ACTIVE`}
+                  </SvgText>
+                  <SvgText 
+                    x="5" y={yPos + 8} 
+                    fill="#fff" 
+                    fontSize="7" 
+                    opacity={0.8}
+                    fontFamily="SpaceGrotesk-Bold"
+                  >
+                    {`${(val * 100).toFixed(0)}% LOAD`}
+                  </SvgText>
+               </G>
+             );
+          })}
+
+          {/* Floating Neural Nodes */}
+          <G opacity={0.4}>
+             <AnimatedCircle cx="20" cy="150" r="1" fill="#00F2FF" />
+             <AnimatedCircle cx="80" cy="170" r="1" fill="#7000FF" />
+             <AnimatedCircle cx="15" cy="40" r="1" fill="#FF0055" />
+          </G>
         </Svg>
 
-        <Animated.View style={[styles.scanLine, animatedScanStyle]} />
-        
-        {/* Ambient Corner Data */}
-        <View style={styles.cornerData}>
-           <Text style={styles.cornerLabel}>CORE_TEMP</Text>
-           <Text style={styles.cornerValue}>36.8°C</Text>
+        <Animated.View style={[styles.scanLine, animatedScanStyle]}>
+           <View style={styles.scanGlow} />
+        </Animated.View>
+
+        <View style={styles.telemetryOverlay}>
+            <View style={styles.telemetryItem}>
+                <Text style={styles.teleText}>LOAD_INDEX</Text>
+                <Text style={styles.teleValue}>0.842</Text>
+            </View>
+            <View style={styles.telemetryItem}>
+                <Text style={styles.teleText}>RECOVERY_WINDOW</Text>
+                <Text style={styles.teleValue}>14h 22m</Text>
+            </View>
         </View>
       </View>
 
       <View style={styles.legend}>
-         <LegendItem color="#FF0055" label="CRITICAL" />
-         <LegendItem color="#7000FF" label="OPTIMIZED" />
-         <LegendItem color="#00F2FF" label="RECOVERY" />
+         <LegendItem color="#FF0055" label="MAX" />
+         <LegendItem color="#7000FF" label="BALANCED" />
+         <LegendItem color="#00F2FF" label="REST" />
       </View>
     </View>
   );
@@ -251,20 +292,17 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({ workouts }) => {
 
 const MuscleGroup = ({ path, intensity, color, breath }: any) => {
   const animatedProps = useAnimatedProps(() => ({
-    opacity: intensity > 0.1 ? interpolate(breath.value, [1, 1.15], [0.6, 1]) : 0.05,
-    fill: intensity > 0.1 ? color : 'rgba(255,255,255,0.02)'
+    opacity: intensity > 0.05 ? interpolate(breath.value, [1, 1.15], [0.4, 0.9]) : 0.05,
+    fill: intensity > 0.05 ? color : 'rgba(255,255,255,0.05)'
   }));
 
   return (
-    <G filter="url(#glowFilter)">
-      <AnimatedPath 
-        d={path} 
-        animatedProps={animatedProps}
-      />
-      {intensity > 0.7 && (
-        <Circle cx="50" cy="100" r="100" fill="url(#gradStrain)" opacity={0.2} />
-      )}
-    </G>
+    <AnimatedPath 
+      d={path} 
+      animatedProps={animatedProps}
+      stroke={intensity > 0.7 ? '#FF0055' : 'none'}
+      strokeWidth={0.2}
+    />
   );
 };
 
@@ -278,86 +316,118 @@ const LegendItem = ({ color, label }: any) => (
 const styles = StyleSheet.create({
   container: {
     padding: 0,
+    position: 'relative',
+  },
+  cornerTL: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    width: 20,
+    height: 20,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: 'rgba(0,242,255,0.3)',
+  },
+  cornerBR: {
+    position: 'absolute',
+    bottom: -10,
+    right: -10,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(0,242,255,0.3)',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  telemetryBadge: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginBottom: 4,
   },
   pulseDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
-  telemetryText: {
-    fontSize: 8,
+  statusText: {
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     color: '#FF0055',
+    fontFamily: 'Manrope-Bold',
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
+    letterSpacing: -0.5,
     fontFamily: 'SpaceGrotesk-Bold',
   },
-  toggleBtn: {
-    flexDirection: 'row',
+  flipCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,242,255,0.05)',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
-  },
-  toggleText: {
-    fontSize: 10,
-    fontWeight: '700',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,242,255,0.2)',
   },
   heatmapWrapper: {
     alignItems: 'center',
     position: 'relative',
-    height: 260,
+    height: 280,
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 24,
+    overflow: 'hidden',
   },
   scanLine: {
     position: 'absolute',
-    left: 10,
-    right: 10,
-    height: 2,
-    backgroundColor: '#00F2FF',
-    shadowColor: '#00F2FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  cornerData: {
-    position: 'absolute',
-    bottom: 0,
+    left: 0,
     right: 0,
+    height: 1,
+    backgroundColor: '#00F2FF',
+    zIndex: 10,
+  },
+  scanGlow: {
+    height: 40,
+    backgroundColor: 'rgba(0,242,255,0.05)',
+    width: '100%',
+    position: 'absolute',
+    top: -20,
+  },
+  telemetryOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    gap: 8,
+  },
+  telemetryItem: {
     alignItems: 'flex-end',
   },
-  cornerLabel: {
+  teleText: {
     fontSize: 7,
     color: 'rgba(255,255,255,0.3)',
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  cornerValue: {
-    fontSize: 10,
+  teleValue: {
+    fontSize: 12,
     color: '#00F2FF',
     fontWeight: '700',
+    fontFamily: 'SpaceGrotesk-Bold',
   },
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 20,
+    gap: 24,
+    marginTop: 24,
     paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.05)',
@@ -365,17 +435,17 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   legendDot: {
-    width: 6,
-    height: 6,
+    width: 8,
+    height: 4,
     borderRadius: 1,
   },
   legendLabel: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 0.5,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
   },
 });
