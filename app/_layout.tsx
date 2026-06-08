@@ -49,7 +49,6 @@ function RootLayoutContent() {
       <Stack.Screen name="workout/[id]" />
       <Stack.Screen name="edit-workout/[id]" />
       <Stack.Screen name="exercise-presets" />
-      <Stack.Screen name="scanner" />
       <Stack.Screen name="share-workout" />
     </Stack>
   );
